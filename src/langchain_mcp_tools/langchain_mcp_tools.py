@@ -165,14 +165,19 @@ async def get_mcp_server_tools(
                     logger.info(f'MCP tool "{server_name}"/"{tool.name}"'
                                 f' received input: {kwargs}')
                     result = await session.call_tool(self.name, kwargs)
+                    try:
+                        result_content_text = "".join(x.text for x in result.content)
+                    except (AttributeError, TypeError):
+                        result_content_text = f"Result content text parsing error: {repr(result.content)}"
                     if result.isError:
-                        raise ToolException(result.content)
+                        raise ToolException(result_content_text)
 
                     # Log result size for monitoring
-                    size = asizeof.asizeof(result.content)
+                    size = asizeof.asizeof(result_content_text)
                     logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
                                 f'received result (size: {size})')
-                    return result.content
+
+                    return result_content_text
 
             langchain_tools.append(McpToLangChainAdapter())
 
