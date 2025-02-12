@@ -50,7 +50,14 @@ async def run() -> None:
                 'args': [
                     'mcp-server-fetch'
                 ]
-            }
+            },
+            'weather': {
+                'command': 'npx',
+                'args': [
+                    '-y',
+                    '@h1deya/mcp-server-weather'
+                ]
+            },
         }
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
@@ -59,9 +66,9 @@ async def run() -> None:
         )
 
         llm = init_chat_model(
-            model='claude-3-5-haiku-latest',
+            model='claude-3-5-sonnet-latest',
             model_provider='anthropic',
-            # model='gpt-4o-mini',
+            # model='gpt-4o',
             # model_provider='openai',
             temperature=0,
             max_tokens=1000
@@ -72,8 +79,9 @@ async def run() -> None:
             tools
         )
 
-        # query = 'Read the news headlines on bbc.com'
-        query = 'Read and briefly summarize the LICENSE file'
+        query = 'Read the news headlines on bbc.com'
+        # query = 'Read and briefly summarize the LICENSE file'
+        # query = "Tomorrow's weather in SF?"
 
         print('\x1b[33m')  # color to yellow
         print(query)

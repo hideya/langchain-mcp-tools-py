@@ -7,7 +7,7 @@ server tools with LangChain / Python.
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/),
 an open source technology
 [announced by Anthropic](https://www.anthropic.com/news/model-context-protocol),
-dramatically expands generative AI’s scope
+dramatically expands LLM’s scope
 by enabling external tool and resource integration, including
 Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
 
@@ -78,7 +78,7 @@ The returned tools can be used with LangChain, e.g.:
 ```python
 # from langchain.chat_models import init_chat_model
 llm = init_chat_model(
-    model='claude-3-5-haiku-latest',
+    model='claude-3-5-sonnet-latest',
     model_provider='anthropic'
 )
 

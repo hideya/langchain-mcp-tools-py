@@ -14,6 +14,7 @@ from typing import (
     Dict,
     List,
     NoReturn,
+    Optional,
     Tuple,
     Type,
     TypeAlias,
@@ -143,6 +144,7 @@ async def get_mcp_server_tools(
         # Wrap MCP tools into LangChain tools
         langchain_tools: List[BaseTool] = []
         for tool in tools_response.tools:
+
             # Define adapter class to convert MCP tool to LangChain format
             class McpToLangChainAdapter(BaseTool):
                 name: str = tool.name or 'NO NAME'
@@ -151,10 +153,11 @@ async def get_mcp_server_tools(
                 args_schema: Type[BaseModel] = jsonschema_to_pydantic(
                     tool.inputSchema
                 )
+                session: Optional[ClientSession] = None
 
                 def _run(self, **kwargs: Any) -> NoReturn:
                     raise NotImplementedError(
-                        'Only async operation is supported'
+                        'MCP tools only support async operations'
                     )
 
                 async def _arun(self, **kwargs: Any) -> Any:
@@ -164,20 +167,44 @@ async def get_mcp_server_tools(
                     """
                     logger.info(f'MCP tool "{server_name}"/"{tool.name}"'
                                 f' received input: {kwargs}')
-                    result = await session.call_tool(self.name, kwargs)
+
                     try:
-                        result_content_text = "".join(x.text for x in result.content)
-                    except (AttributeError, TypeError):
-                        result_content_text = f"Result content text parsing error: {repr(result.content)}"
-                    if result.isError:
-                        raise ToolException(result_content_text)
+                        result = await session.call_tool(self.name, kwargs)
 
-                    # Log result size for monitoring
-                    size = asizeof.asizeof(result_content_text)
-                    logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
-                                f'received result (size: {size})')
+                        if hasattr(result, 'isError') and result.isError:
+                            raise ToolException(
+                                f'Tool execution failed: {result.content}'
+                            )
 
-                    return result_content_text
+                        if not hasattr(result, 'content'):
+                            return str(result)
+
+                        # The return type of `BaseTool`'s `arun` is `str`.
+                        try:
+                            result_content_text = '\n\n'.join(
+                                item.text
+                                for item in result.content
+                                if isinstance(item, mcp_types.TextContent)
+                            )
+                            result_content_text = result_content_text or ''
+
+                        except KeyError as e:
+                            result_content_text = (
+                                f'Error in parsing result.content: {str(e)}; '
+                                f'contents: {repr(result.content)}'
+                            )
+
+                        # Log result size for monitoring
+                        size = asizeof.asizeof(result_content_text)
+                        logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
+                                    f'received result (size: {size})')
+
+                        return result_content_text
+
+                    except Exception as e:
+                        if self.handle_tool_error:
+                            return f'Error executing MCP tool: {str(e)}'
+                        raise
 
             langchain_tools.append(McpToLangChainAdapter())
 
