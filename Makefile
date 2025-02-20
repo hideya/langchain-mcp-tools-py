@@ -1,7 +1,7 @@
 # NOTES: 
 # - The command lines (recipe lines) must start with a TAB character.
 # - Each command line runs in a separate shell without .ONESHELL:
-.PHONY: clean install build pkg-check publish test run-example
+.PHONY: clean install build pkg-check publish test run-example prep-publish
 .ONESHELL:
 
 .venv:
@@ -18,7 +18,7 @@ build: clean install
 check-pkg:
 	uv pip show -f langchain-mcp-tools
 
-publish: build
+prep-publish: build
 	# set PYPI_API_KEY from .env
 	$(eval export $(shell grep '^PYPI_API_KEY=' .env ))
 
@@ -28,9 +28,18 @@ publish: build
 		exit 1; \
 	fi
 
+publish: prep-publish
 	uvx twine upload \
+		--verbose \
 		--repository-url https://upload.pypi.org/legacy/ dist/* \
 		--password ${PYPI_API_KEY}
+
+test-publish: prep-publish
+	tar tzf dist/*.tar.gz
+	@echo
+	unzip -l dist/*.whl
+	@echo
+	uvx twine check dist/*
 
 test: install
 	uv pip install -e ".[dev]"

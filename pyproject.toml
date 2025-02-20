@@ -23,7 +23,6 @@ dependencies = [
     "langgraph>=0.2.62",
     "mcp>=1.2.0",
     "pyjson5>=1.6.8",
-    "pympler>=1.1",
     "python-dotenv>=1.0.1",
 ]
 
