@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+
+## [0.1.6] - 2025-02-20
+
+### Added
+
+- `make test-publish` target to handle publication more carefully
+
+### Changed
+
+### Fixed
+
+- Issue #8: Estimate the size of returning text in more simpler way
+- Issue #9: Return a text with reasonable explanation when no text return found
+
+
 ## [0.1.5] - 2025-02-12
 
 ### Added
