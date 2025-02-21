@@ -1,6 +1,6 @@
 [project]
 name = "langchain-mcp-tools"
-version = "0.1.5"
+version = "0.1.7"
 description = "Model Context Protocol (MCP) To LangChain Tools Conversion Utility"
 keywords = [
     "modelcontextprotocol",
@@ -17,18 +17,18 @@ requires-python = ">=3.11"
 dependencies = [
     "jsonschema-pydantic>=0.6",
     "langchain>=0.3.14",
-    "langchain-anthropic>=0.3.1",
-    "langchain-groq>=0.2.3",
-    "langchain-openai>=0.3.0",
-    "langgraph>=0.2.62",
     "mcp>=1.2.0",
     "pyjson5>=1.6.8",
-    "pympler>=1.1",
     "python-dotenv>=1.0.1",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "dotenv>=0.9.9",
+    "langchain-anthropic>=0.3.1",
+    "langchain-groq>=0.2.3",
+    "langchain-openai>=0.3.0",
+    "langgraph>=0.2.62",
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.2",
 ]

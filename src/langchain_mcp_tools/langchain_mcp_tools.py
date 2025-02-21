@@ -28,7 +28,7 @@ try:
     from mcp.client.stdio import stdio_client
     import mcp.types as mcp_types
     from pydantic import BaseModel
-    from pympler import asizeof
+    # from pydantic_core import to_json
 except ImportError as e:
     print(f'\nError: Required package not found: {e}')
     print('Please ensure all required packages are installed\n')
@@ -165,8 +165,8 @@ async def get_mcp_server_tools(
                     Asynchronously executes the tool with given arguments.
                     Logs input/output and handles errors.
                     """
-                    logger.info(f'MCP tool "{server_name}"/"{tool.name}"'
-                                f' received input: {kwargs}')
+                    logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
+                                f'received input: {kwargs}')
 
                     try:
                         result = await session.call_tool(self.name, kwargs)
@@ -186,7 +186,12 @@ async def get_mcp_server_tools(
                                 for item in result.content
                                 if isinstance(item, mcp_types.TextContent)
                             )
-                            result_content_text = result_content_text or ''
+                            # text_items = [
+                            #     item
+                            #     for item in result.content
+                            #     if isinstance(item, mcp_types.TextContent)
+                            # ]
+                            # result_content_text =to_json(text_items).decode()
 
                         except KeyError as e:
                             result_content_text = (
@@ -194,14 +199,25 @@ async def get_mcp_server_tools(
                                 f'contents: {repr(result.content)}'
                             )
 
-                        # Log result size for monitoring
-                        size = asizeof.asizeof(result_content_text)
+                        # Log rough result size for monitoring
+                        size = len(result_content_text.encode())
                         logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
                                     f'received result (size: {size})')
+
+                        # If no text content, return a clear message
+                        # describing the situation.
+                        result_content_text = (
+                            result_content_text or
+                            'No text content available in response'
+                        )
 
                         return result_content_text
 
                     except Exception as e:
+                        logger.warn(
+                            f'MCP tool "{server_name}"/"{tool.name}" '
+                            f'caused error:  {str(e)}'
+                        )
                         if self.handle_tool_error:
                             return f'Error executing MCP tool: {str(e)}'
                         raise

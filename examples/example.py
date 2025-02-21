@@ -30,6 +30,7 @@ def init_logger() -> logging.Logger:
 
 async def run() -> None:
     load_dotenv()
+
     if not os.environ.get('ANTHROPIC_API_KEY'):
         raise Exception('ANTHROPIC_API_KEY env var needs to be set')
     # if not os.environ.get('OPENAI_API_KEY'):
@@ -79,9 +80,9 @@ async def run() -> None:
             tools
         )
 
-        query = 'Read the news headlines on bbc.com'
+        # query = 'Read the news headlines on bbc.com'
         # query = 'Read and briefly summarize the LICENSE file'
-        # query = "Tomorrow's weather in SF?"
+        query = "Tomorrow's weather in SF?"
 
         print('\x1b[33m')  # color to yellow
         print(query)
