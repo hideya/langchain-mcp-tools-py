@@ -46,6 +46,7 @@ test: install
 	.venv/bin/pytest tests/ -v
 
 run-example: install
+	uv pip install -e ".[dev]"
 	uv run examples/example.py
 
 clean:

@@ -30,6 +30,7 @@ def init_logger() -> logging.Logger:
 
 async def run() -> None:
     load_dotenv()
+
     if not os.environ.get('ANTHROPIC_API_KEY'):
         raise Exception('ANTHROPIC_API_KEY env var needs to be set')
     # if not os.environ.get('OPENAI_API_KEY'):
