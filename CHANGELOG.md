@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.1.8] - 2025-03-13
+
+### Added
+
+### Changed
+
+### Fixed
+
+- [PR #14](https://github.com/hideya/langchain-mcp-tools-py/pull/14): Fix: Handle JSON Schema type: ["string", "null"] for Notion MCP tools
+
 
 ## [0.1.7] - 2025-02-21
 
@@ -22,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Issue #11: Move some dev dependencies which are mistakenly in dependencies to the right section
+- [Issue #11](https://github.com/hideya/langchain-mcp-tools-py/issues/11): Move some dev dependencies which are mistakenly in dependencies to the right section
 
 
 ## [0.1.6] - 2025-02-20
@@ -33,10 +43,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-### Fixed
+- Estimate the size of returning text in more simpler way
+- Return a text with reasonable explanation when no text return found
 
-- Issue #8: Estimate the size of returning text in more simpler way
-- Issue #9: Return a text with reasonable explanation when no text return found
+### Fixed
 
 
 ## [0.1.5] - 2025-02-12
@@ -50,5 +60,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [Issue #8](https://github.com/hideya/langchain-mcp-tools-py/issues/8): Content field of tool result is wrong
 - Better checks when converting MCP's results into `str`
-- Content field of tool result is wrong [#8](https://github.com/hideya/langchain-mcp-tools-py/issues/8)
