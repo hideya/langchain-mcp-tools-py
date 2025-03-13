@@ -35,6 +35,17 @@ except ImportError as e:
     sys.exit(1)
 
 
+def fix_schema(schema: dict) -> dict:
+    """Converts JSON Schema 'type': ['string', 'null'] to 'anyOf' format"""
+    if isinstance(schema, dict):
+        if 'type' in schema and isinstance(schema['type'], list):
+            schema['anyOf'] = [{'type': t} for t in schema['type']]
+            del schema['type']  # Remove 'type' and standardize to 'anyOf'
+        for key, value in schema.items():
+            schema[key] = fix_schema(value)  # Apply recursively
+    return schema
+
+
 # Type alias for the bidirectional communication channels with the MCP server
 # FIXME: not defined in mcp.types, really?
 StdioTransport: TypeAlias = tuple[
@@ -151,7 +162,7 @@ async def get_mcp_server_tools(
                 description: str = tool.description or ''
                 # Convert JSON schema to Pydantic model for argument validation
                 args_schema: Type[BaseModel] = jsonschema_to_pydantic(
-                    tool.inputSchema
+                    fix_schema(tool.inputSchema)  # Apply schema conversion
                 )
                 session: Optional[ClientSession] = None
 
