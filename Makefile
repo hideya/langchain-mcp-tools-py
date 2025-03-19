@@ -1,7 +1,7 @@
 # NOTES: 
 # - The command lines (recipe lines) must start with a TAB character.
 # - Each command line runs in a separate shell without .ONESHELL:
-.PHONY: clean install build pkg-check publish test run-example prep-publish
+.PHONY: clean install build check-pkg prep-publish test-publish publish test run-example
 .ONESHELL:
 
 .venv:

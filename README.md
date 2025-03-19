@@ -11,21 +11,21 @@ dramatically expands LLM’s scope
 by enabling external tool and resource integration, including
 Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
 
-Over 800 functional components available as MCP servers:
+Over 1500 functional components available as MCP servers:
 
 - [Glama’s list of Open-Source MCP servers](https://glama.ai/mcp/servers)
 - [Smithery: MCP Server Registry](https://smithery.ai/)
 - [awesome-mcp-servers](https://github.com/hideya/awesome-mcp-servers#Server-Implementations)
 - [MCP Get Started/Example Servers](https://modelcontextprotocol.io/examples)
 
-The goal of this utility is to make these 800+ MCP servers readily accessible from LangChain.
+The goal of this utility is to make these 1500+ MCP servers readily accessible from LangChain.
 
 It contains a utility function `convert_mcp_to_langchain_tools()`.  
 This async function handles parallel initialization of specified multiple MCP servers
 and converts their available tools into a list of LangChain-compatible tools.
 
 For detailed information on how to use this library, please refer to the following document:
-- ["Supercharging LangChain: Integrating 800+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-800-mcp-with-react-d4e467cbf41a)
+- ["Supercharging LangChain: Integrating 1500+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-1500-mcp-with-react-d4e467cbf41a)
 
 A typescript equivalent of this utility is available
 [here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
@@ -78,7 +78,7 @@ The returned tools can be used with LangChain, e.g.:
 ```python
 # from langchain.chat_models import init_chat_model
 llm = init_chat_model(
-    model='claude-3-5-sonnet-latest',
+    model='claude-3-7-sonnet-latest',
     model_provider='anthropic'
 )
 
@@ -96,8 +96,12 @@ For hands-on experimentation with MCP server integration,
 try [this LangChain application built with the utility](https://github.com/hideya/mcp-client-langchain-py)
 
 For detailed information on how to use this library, please refer to the following document:  
-["Supercharging LangChain: Integrating 800+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-800-mcp-with-react-d4e467cbf41a)
+["Supercharging LangChain: Integrating 1500+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-1500-mcp-with-react-d4e467cbf41a)
 
 ## Limitations
 
 Currently, only text results of tool calls are supported.
+
+## Change Log
+
+Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)

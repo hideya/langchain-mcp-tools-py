@@ -67,12 +67,10 @@ async def run() -> None:
         )
 
         llm = init_chat_model(
-            model='claude-3-5-sonnet-latest',
-            model_provider='anthropic',
-            # model='gpt-4o',
-            # model_provider='openai',
-            temperature=0,
-            max_tokens=1000
+            # model='claude-3-7-sonnet-latest',
+            # model_provider='anthropic'
+            model='o3-mini',
+            model_provider='openai'
         )
 
         agent = create_react_agent(

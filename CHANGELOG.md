@@ -13,11 +13,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+
+## [0.1.9] - 2025-03-19
+
+### Added
+
+### Changed
+
+### Fixed
+
+
 ## [0.1.8] - 2025-03-13
 
 ### Added
 
 ### Changed
+
+- Minor updates to README.me and example.py
 
 ### Fixed
 
@@ -43,7 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Estimate the size of returning text in more simpler way
+- Estimate the size of returning text in a simpler way
 - Return a text with reasonable explanation when no text return found
 
 ### Fixed
