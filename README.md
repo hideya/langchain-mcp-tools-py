@@ -13,9 +13,9 @@ Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
 
 Over 1500 functional components available as MCP servers:
 
-- [Glama’s list of Open-Source MCP servers](https://glama.ai/mcp/servers)
+- [MCP.so - Find Awesome MCP Servers and Clients](https://mcp.so/)
 - [Smithery: MCP Server Registry](https://smithery.ai/)
-- [awesome-mcp-servers](https://github.com/hideya/awesome-mcp-servers#Server-Implementations)
+- [pulse - Browse and discover MCP use cases, servers, clients, and news](https://www.pulsemcp.com/)
 - [MCP Get Started/Example Servers](https://modelcontextprotocol.io/examples)
 
 The goal of this utility is to make these 1500+ MCP servers readily accessible from LangChain.

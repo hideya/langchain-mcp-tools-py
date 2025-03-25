@@ -7,40 +7,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Added
-
 ### Changed
 
-### Fixed
+- Minor updates to README.me
+- Remove unnecessarily added python-dotenv from the dependencies
 
 
 ## [0.1.9] - 2025-03-19
 
-### Added
-
 ### Changed
 
-### Fixed
+- Update LLM models used in example.py
 
 
 ## [0.1.8] - 2025-03-13
-
-### Added
-
-### Changed
-
-- Minor updates to README.me and example.py
 
 ### Fixed
 
 - [PR #14](https://github.com/hideya/langchain-mcp-tools-py/pull/14): Fix: Handle JSON Schema type: ["string", "null"] for Notion MCP tools
 
+### Changed
+
+- Minor updates to README.me and example.py
+
 
 ## [0.1.7] - 2025-02-21
-
-### Added
-
-### Changed
 
 ### Fixed
 
@@ -58,19 +49,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Estimate the size of returning text in a simpler way
 - Return a text with reasonable explanation when no text return found
 
-### Fixed
-
 
 ## [0.1.5] - 2025-02-12
-
-### Added
-
-### Changed
-
-- Update example code in README.md to use `claude-3-5-sonnet-latest`
-  instead of `haiku` which is sometimes less capable to handle results from MCP
 
 ### Fixed
 
 - [Issue #8](https://github.com/hideya/langchain-mcp-tools-py/issues/8): Content field of tool result is wrong
 - Better checks when converting MCP's results into `str`
+
+### Changed
+
+- Update example code in README.md to use `claude-3-5-sonnet-latest`
+  instead of `haiku` which is sometimes less capable to handle results from MCP
