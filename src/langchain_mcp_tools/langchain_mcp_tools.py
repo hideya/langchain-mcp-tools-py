@@ -247,13 +247,22 @@ async def get_mcp_server_tools(
     return langchain_tools
 
 
+# A very simple pre-configured logger for fallback
+def init_logger() -> logging.Logger:
+    logging.basicConfig(
+        level=logging.INFO,  # logging.DEBUG,
+        format='\x1b[90m[%(levelname)s]\x1b[0m %(message)s'
+    )
+    return logging.getLogger()
+
+
 # Type hint for cleanup function
 McpServerCleanupFn = Callable[[], Awaitable[None]]
 
 
 async def convert_mcp_to_langchain_tools(
     server_configs: Dict[str, Dict[str, Any]],
-    logger: logging.Logger = logging.getLogger(__name__)
+    logger: Optional[logging.Logger] = None
 ) -> Tuple[List[BaseTool], McpServerCleanupFn]:
     """Initialize multiple MCP servers and convert their tools to
     LangChain format.
@@ -267,7 +276,8 @@ async def convert_mcp_to_langchain_tools(
             configurations, where each configuration contains command, args,
             and env settings
         logger: Logger instance to use for logging events and errors.
-               Defaults to module logger.
+           If None, uses module logger with fallback to a pre-configured
+           logger when no root handlers exist.
 
     Returns:
         A tuple containing:
@@ -284,6 +294,13 @@ async def convert_mcp_to_langchain_tools(
         # Use tools...
         await cleanup()
     """
+
+    if logger is None:
+        logger = logging.getLogger(__name__)
+        # Check if the root logger has handlers configured
+        if not logging.root.handlers and not logger.handlers:
+            # No logging configured, use a simple pre-configured logger
+            logger = init_logger()
 
     # Initialize AsyncExitStack for managing multiple server lifecycles
     stdio_transports: List[StdioTransport] = []

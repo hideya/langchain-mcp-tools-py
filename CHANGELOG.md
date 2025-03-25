@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [0.1.10] - 2025-03-25
+
 ### Changed
 
-- Minor updates to README.me
+- Make the logger fallback to a pre-configured logger if no root handlers exist
 - Remove unnecessarily added python-dotenv from the dependencies
+- Minor updates to README.me
 
 
 ## [0.1.9] - 2025-03-19

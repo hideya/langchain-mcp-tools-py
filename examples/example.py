@@ -23,7 +23,7 @@ from langchain_mcp_tools import convert_mcp_to_langchain_tools
 def init_logger() -> logging.Logger:
     logging.basicConfig(
         level=logging.INFO,  # logging.DEBUG,
-        format='\x1b[90m[%(levelname)s]\x1b[0m %(message)s'
+        format='\x1b[90m%(levelname)s:\x1b[0m %(message)s'
     )
     return logging.getLogger()
 
@@ -63,7 +63,7 @@ async def run() -> None:
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
             mcp_configs,
-            init_logger()
+            # init_logger()
         )
 
         llm = init_chat_model(
