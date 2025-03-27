@@ -49,7 +49,7 @@ but only the contents of the `mcpServers` property,
 and is expressed as a `dict`, e.g.:
 
 ```python
-mcp_configs = {
+mcp_servers = {
     'filesystem': {
         'command': 'npx',
         'args': ['-y', '@modelcontextprotocol/server-filesystem', '.']
@@ -61,7 +61,7 @@ mcp_configs = {
 }
 
 tools, cleanup = await convert_mcp_to_langchain_tools(
-    mcp_configs
+    mcp_servers
 )
 ```
 
