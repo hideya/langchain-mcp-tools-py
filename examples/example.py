@@ -37,7 +37,7 @@ async def run() -> None:
     #     raise Exception('OPENAI_API_KEY env var needs to be set')
 
     try:
-        mcp_configs = {
+        mcp_servers = {
             'filesystem': {
                 'command': 'npx',
                 'args': [
@@ -62,7 +62,7 @@ async def run() -> None:
         }
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
-            mcp_configs,
+            mcp_servers,
             # init_logger()
         )
 
