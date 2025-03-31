@@ -45,9 +45,9 @@ test: install
 	uv pip install -e ".[dev]"
 	.venv/bin/pytest tests/ -v
 
-run-example: install
+run-simple-usage: install
 	uv pip install -e ".[dev]"
-	uv run examples/example.py
+	uv run testfiles/simple-usage.py
 
 clean:
 	git clean -fdxn -e .env

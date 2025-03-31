@@ -24,8 +24,8 @@ from typing import (
 try:
     from jsonschema_pydantic import jsonschema_to_pydantic  # type: ignore
     from langchain_core.tools import BaseTool, ToolException
-    from mcp import ClientSession, StdioServerParameters
-    from mcp.client.stdio import stdio_client
+    from mcp import ClientSession
+    from mcp.client.stdio import stdio_client, StdioServerParameters
     import mcp.types as mcp_types
     from pydantic import BaseModel
     # from pydantic_core import to_json
@@ -90,12 +90,23 @@ async def spawn_mcp_server_and_get_transport(
         server_params = StdioServerParameters(
             command=server_config['command'],
             args=server_config.get('args', []),
-            env=env
+            env=env,
+            cwd=server_config.get('cwd', None)
         )
 
         # Initialize stdio client and register it with exit stack for cleanup
+        # NOTE: Why the key name `stderr` for `server_config` was chosen:
+        # Unlike the TypeScript SDK's `StdioServerParameters`, the Python SDK's
+        # `StdioServerParameters` doesn't include `stderr`.
+        # Instead, it calls `stdio_client()` with a separate argument
+        # `errlog`.  I once thought of using `errlog` for the key for the
+        # Pyhton version, but decided to follow the TypeScript version since
+        # its public API already exposes the key name and I choose consistency.
         stdio_transport = await exit_stack.enter_async_context(
-            stdio_client(server_params)
+            stdio_client(
+                server_params,
+                errlog=server_config.get('stderr', None)
+            )
         )
     except Exception as e:
         logger.error(f'Error spawning MCP server: {str(e)}')
@@ -287,8 +298,12 @@ async def convert_mcp_to_langchain_tools(
 
     Example:
         server_configs = {
-            "server1": {"command": "npm", "args": ["start"]},
-            "server2": {"command": "./server", "args": ["-p", "8000"]}
+            'fetch': {
+                'command': 'uvx', 'args': ['mcp-server-fetch']
+            },
+            'weather': {
+                'command': 'npx', 'args': ['-y','@h1deya/mcp-server-weather']
+            }
         }
         tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
         # Use tools...

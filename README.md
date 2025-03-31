@@ -11,21 +11,20 @@ dramatically expands LLM’s scope
 by enabling external tool and resource integration, including
 Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
 
-Over 1500 functional components available as MCP servers:
+Over 2000 functional components available as MCP servers:
 
+- [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers)
 - [MCP.so - Find Awesome MCP Servers and Clients](https://mcp.so/)
 - [Smithery: MCP Server Registry](https://smithery.ai/)
-- [pulse - Browse and discover MCP use cases, servers, clients, and news](https://www.pulsemcp.com/)
-- [MCP Get Started/Example Servers](https://modelcontextprotocol.io/examples)
 
-The goal of this utility is to make these 1500+ MCP servers readily accessible from LangChain.
+The goal of this utility is to make these 2000+ MCP servers readily accessible from LangChain.
 
 It contains a utility function `convert_mcp_to_langchain_tools()`.  
 This async function handles parallel initialization of specified multiple MCP servers
 and converts their available tools into a list of LangChain-compatible tools.
 
 For detailed information on how to use this library, please refer to the following document:
-- ["Supercharging LangChain: Integrating 1500+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-1500-mcp-with-react-d4e467cbf41a)
+- ["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
 
 A typescript equivalent of this utility is available
 [here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
@@ -96,11 +95,15 @@ For hands-on experimentation with MCP server integration,
 try [this LangChain application built with the utility](https://github.com/hideya/mcp-client-langchain-py)
 
 For detailed information on how to use this library, please refer to the following document:  
-["Supercharging LangChain: Integrating 1500+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-1500-mcp-with-react-d4e467cbf41a)
+["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
 
 ## Limitations
 
 Currently, only text results of tool calls are supported.
+
+Remote MCP server is not supported.
+
+Fatures other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
 
 ## Change Log
 
