@@ -1,8 +1,12 @@
 # Standard library imports
 import asyncio
 import logging
-import os
 import sys
+from contextlib import ExitStack
+from typing import (
+    Any,
+    Dict,
+)
 
 # Third-party imports
 try:
@@ -31,20 +35,16 @@ def init_logger() -> logging.Logger:
 async def run() -> None:
     load_dotenv()
 
-    if not os.environ.get('ANTHROPIC_API_KEY'):
-        raise Exception('ANTHROPIC_API_KEY env var needs to be set')
-    # if not os.environ.get('OPENAI_API_KEY'):
-    #     raise Exception('OPENAI_API_KEY env var needs to be set')
-
     try:
-        mcp_servers = {
+        mcp_servers: Dict[str, Dict[str, Any]] = {
             'filesystem': {
                 'command': 'npx',
                 'args': [
                     '-y',
                     '@modelcontextprotocol/server-filesystem',
                     '.'  # path to a directory to allow access to
-                ]
+                ],
+                'cwd': '/tmp'  # the working directory to be use by the server
             },
             'fetch': {
                 'command': 'uvx',
@@ -60,6 +60,21 @@ async def run() -> None:
                 ]
             },
         }
+
+        # Set the file descriptors to which MCP server's stderr is redirected
+        # NOTE: Why the key name `stderr` was chosen:
+        # Unlike the TypeScript SDK's `StdioServerParameters`, the Python SDK's
+        # `StdioServerParameters` doesn't include `stderr`.
+        # Instead, it calls `stdio_client()` with a separate argument
+        # `errlog`.  I once thought of using `errlog` for the key for the
+        # Pyhton version, but decided to follow the TypeScript version since
+        # its public API already exposes the key name and I choose consistency.
+        log_file_exit_stack = ExitStack()
+        for server_name in mcp_servers:
+            log_path = f'mcp-server-{server_name}.log'
+            log_file = open(log_path, 'w')
+            mcp_servers[server_name]['stderr'] = log_file.fileno()
+            log_file_exit_stack.callback(log_file.close)
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
             mcp_servers,
@@ -80,7 +95,8 @@ async def run() -> None:
 
         # query = 'Read the news headlines on bbc.com'
         # query = 'Read and briefly summarize the LICENSE file'
-        query = "Tomorrow's weather in SF?"
+        query = 'Tell me the number of directories in the current directory';
+        # query = "Tomorrow's weather in SF?"
 
         print('\x1b[33m')  # color to yellow
         print(query)
@@ -101,6 +117,7 @@ async def run() -> None:
     finally:
         if cleanup is not None:
             await cleanup()
+        log_file_exit_stack.close()
 
 
 def main() -> None:

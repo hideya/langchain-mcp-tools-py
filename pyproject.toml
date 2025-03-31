@@ -1,6 +1,6 @@
 [project]
 name = "langchain-mcp-tools"
-version = "0.1.10"
+version = "0.1.11"
 description = "Model Context Protocol (MCP) To LangChain Tools Conversion Utility"
 keywords = [
     "modelcontextprotocol",
@@ -17,7 +17,7 @@ requires-python = ">=3.11"
 dependencies = [
     "jsonschema-pydantic>=0.6",
     "langchain>=0.3.14",
-    "mcp>=1.2.0",
+    "mcp>=1.6.0",
     "pyjson5>=1.6.8",
 ]
 
