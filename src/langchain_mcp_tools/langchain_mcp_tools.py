@@ -1,8 +1,4 @@
 # Standard library imports
-from anyio.streams.memory import (
-    MemoryObjectReceiveStream,
-    MemoryObjectSendStream,
-)
 import logging
 import os
 import sys
@@ -11,21 +7,27 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Dict,
-    List,
+    cast,
     NoReturn,
-    Optional,
-    Tuple,
-    Type,
+    NotRequired,
+    TextIO,
     TypeAlias,
+    TypedDict,
 )
+from urllib.parse import urlparse
 
 # Third-party imports
 try:
+    from anyio.streams.memory import (
+        MemoryObjectReceiveStream,
+        MemoryObjectSendStream,
+    )
     from jsonschema_pydantic import jsonschema_to_pydantic  # type: ignore
     from langchain_core.tools import BaseTool, ToolException
     from mcp import ClientSession
+    from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client, StdioServerParameters
+    from mcp.client.websocket import websocket_client
     import mcp.types as mcp_types
     from pydantic import BaseModel
     # from pydantic_core import to_json
@@ -33,6 +35,27 @@ except ImportError as e:
     print(f'\nError: Required package not found: {e}')
     print('Please ensure all required packages are installed\n')
     sys.exit(1)
+
+
+class McpServerCommandBasedConfig(TypedDict):
+    command: str
+    args: NotRequired[list[str] | None]
+    env:  NotRequired[dict[str, str] | None]
+    cwd: NotRequired[str | None]
+    errlog: NotRequired[TextIO | None]
+
+
+class McpServerUrlBasedConfig(TypedDict):
+    url: str
+    args: NotRequired[list[str] | None]
+    env:  NotRequired[dict[str, str] | None]
+    cwd: NotRequired[str | None]
+    errlog: NotRequired[TextIO | None]
+
+
+McpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig
+
+McpServersConfig = dict[str, McpServerConfig]
 
 
 def fix_schema(schema: dict) -> dict:
@@ -48,7 +71,7 @@ def fix_schema(schema: dict) -> dict:
 
 # Type alias for the bidirectional communication channels with the MCP server
 # FIXME: not defined in mcp.types, really?
-StdioTransport: TypeAlias = tuple[
+Transport: TypeAlias = tuple[
     MemoryObjectReceiveStream[mcp_types.JSONRPCMessage | Exception],
     MemoryObjectSendStream[mcp_types.JSONRPCMessage]
 ]
@@ -56,10 +79,10 @@ StdioTransport: TypeAlias = tuple[
 
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
-    server_config: Dict[str, Any],
+    server_config: McpServerConfig,
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
-) -> StdioTransport:
+) -> Transport:
     """
     Spawns an MCP server process and establishes communication channels.
 
@@ -79,54 +102,75 @@ async def spawn_mcp_server_and_get_transport(
         logger.info(f'MCP server "{server_name}": '
                     f'initializing with: {server_config}')
 
-        # NOTE: `uv` and `npx` seem to require PATH to be set.
-        # To avoid confusion, it was decided to automatically append it
-        # to the env if not explicitly set by the config.
-        env = dict(server_config.get('env', {}))
-        if 'PATH' not in env:
-            env['PATH'] = os.environ.get('PATH', '')
+        url_str = str(server_config.get('url'))  # None becomes 'None'
+        # no exception thrown even for a malformed URL
+        url_scheme = urlparse(url_str).scheme
 
-        # Create server parameters with command, arguments and environment
-        server_params = StdioServerParameters(
-            command=server_config['command'],
-            args=server_config.get('args', []),
-            env=env,
-            cwd=server_config.get('cwd', None)
-        )
-
-        # Initialize stdio client and register it with exit stack for cleanup
-        # NOTE: Why the key name `stderr` for `server_config` was chosen:
-        # Unlike the TypeScript SDK's `StdioServerParameters`, the Python SDK's
-        # `StdioServerParameters` doesn't include `stderr`.
-        # Instead, it calls `stdio_client()` with a separate argument
-        # `errlog`.  I once thought of using `errlog` for the key for the
-        # Pyhton version, but decided to follow the TypeScript version since
-        # its public API already exposes the key name and I choose consistency.
-        stdio_transport = await exit_stack.enter_async_context(
-            stdio_client(
-                server_params,
-                errlog=server_config.get('stderr', None)
+        if url_scheme in ('http', 'https'):
+            transport = await exit_stack.enter_async_context(
+                sse_client(url_str)
             )
-        )
+
+        elif url_scheme in ('ws', 'wss'):
+            transport = await exit_stack.enter_async_context(
+                websocket_client(url_str)
+            )
+
+        else:
+            # NOTE: `uv` and `npx` seem to require PATH to be set.
+            # To avoid confusion, it was decided to automatically append it
+            # to the env if not explicitly set by the config.
+            config = cast(McpServerCommandBasedConfig, server_config)
+            # env = config.get('env', {}) does't work since it can yield None
+            env_val = config.get('env')
+            env = {} if env_val is None else dict(env_val)
+            if 'PATH' not in env:
+                env['PATH'] = os.environ.get('PATH', '')
+
+            # Use stdio client for commands
+            # args = config.get('args', []) does't work since it can yield None
+            args_val = config.get('args')
+            args = [] if args_val is None else list(args_val)
+            server_parameters = StdioServerParameters(
+                command=config.get('command', ''),
+                args=args,
+                env=env,
+                cwd=config.get('cwd', None)
+            )
+
+            # Initialize stdio client and register it with exit stack for
+            # cleanup
+            # NOTE: Why the key name `errlog` for `server_config` was chosen:
+            # Unlike TypeScript SDK's `StdioServerParameters`, the Python
+            # SDK's `StdioServerParameters` doesn't include `stderr: int`.
+            # Instead, it calls `stdio_client()` with a separate argument
+            # `errlog: TextIO`.  I once included `stderr: int` for
+            # compatibility with the TypeScript version, but decided to
+            # follow the Python SDK more closely.
+            errlog_val = server_config.get('errlog')
+            kwargs = {'errlog': errlog_val} if errlog_val is not None else {}
+            transport = await exit_stack.enter_async_context(
+                stdio_client(server_parameters, **kwargs)
+            )
     except Exception as e:
         logger.error(f'Error spawning MCP server: {str(e)}')
         raise
 
-    return stdio_transport
+    return transport
 
 
 async def get_mcp_server_tools(
     server_name: str,
-    stdio_transport: StdioTransport,
+    transport: Transport,
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
-) -> List[BaseTool]:
+) -> list[BaseTool]:
     """
     Retrieves and converts MCP server tools to LangChain format.
 
     Args:
         server_name: Server instance name to use for better logging
-        stdio_transport: Communication channels tuple
+        transport: Communication channels tuple
         exit_stack: Context manager for cleanup handling
         logger: Logger instance for debugging and monitoring
 
@@ -137,7 +181,7 @@ async def get_mcp_server_tools(
         Exception: If tool conversion fails
     """
     try:
-        read, write = stdio_transport
+        read, write = transport
 
         # Use an intermediate `asynccontextmanager` to log the cleanup message
         @asynccontextmanager
@@ -164,7 +208,7 @@ async def get_mcp_server_tools(
         tools_response = await session.list_tools()
 
         # Wrap MCP tools into LangChain tools
-        langchain_tools: List[BaseTool] = []
+        langchain_tools: list[BaseTool] = []
         for tool in tools_response.tools:
 
             # Define adapter class to convert MCP tool to LangChain format
@@ -172,10 +216,10 @@ async def get_mcp_server_tools(
                 name: str = tool.name or 'NO NAME'
                 description: str = tool.description or ''
                 # Convert JSON schema to Pydantic model for argument validation
-                args_schema: Type[BaseModel] = jsonschema_to_pydantic(
+                args_schema: type[BaseModel] = jsonschema_to_pydantic(
                     fix_schema(tool.inputSchema)  # Apply schema conversion
                 )
-                session: Optional[ClientSession] = None
+                session: ClientSession | None = None
 
                 def _run(self, **kwargs: Any) -> NoReturn:
                     raise NotImplementedError(
@@ -272,9 +316,9 @@ McpServerCleanupFn = Callable[[], Awaitable[None]]
 
 
 async def convert_mcp_to_langchain_tools(
-    server_configs: Dict[str, Dict[str, Any]],
-    logger: Optional[logging.Logger] = None
-) -> Tuple[List[BaseTool], McpServerCleanupFn]:
+    server_configs: dict[str, McpServerConfig],
+    logger: logging.Logger | None = None
+) -> tuple[list[BaseTool], McpServerCleanupFn]:
     """Initialize multiple MCP servers and convert their tools to
     LangChain format.
 
@@ -318,7 +362,7 @@ async def convert_mcp_to_langchain_tools(
             logger = init_logger()
 
     # Initialize AsyncExitStack for managing multiple server lifecycles
-    stdio_transports: List[StdioTransport] = []
+    transports: list[Transport] = []
     async_exit_stack = AsyncExitStack()
 
     # Spawn all MCP servers concurrently
@@ -327,24 +371,24 @@ async def convert_mcp_to_langchain_tools(
         # is spawned, i.e. after returning from the `await`, the spawned
         # subprocess starts its initialization independently of (so in
         # parallel with) the Python execution of the following lines.
-        stdio_transport = await spawn_mcp_server_and_get_transport(
+        transport = await spawn_mcp_server_and_get_transport(
             server_name,
             server_config,
             async_exit_stack,
             logger
         )
-        stdio_transports.append(stdio_transport)
+        transports.append(transport)
 
     # Convert tools from each server to LangChain format
-    langchain_tools: List[BaseTool] = []
-    for (server_name, server_config), stdio_transport in zip(
+    langchain_tools: list[BaseTool] = []
+    for (server_name, server_config), transport in zip(
         server_configs.items(),
-        stdio_transports,
+        transports,
         strict=True
     ):
         tools = await get_mcp_server_tools(
             server_name,
-            stdio_transport,
+            transport,
             async_exit_stack,
             logger
         )

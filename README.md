@@ -49,13 +49,13 @@ and is expressed as a `dict`, e.g.:
 
 ```python
 mcp_servers = {
-    'filesystem': {
-        'command': 'npx',
-        'args': ['-y', '@modelcontextprotocol/server-filesystem', '.']
+    "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     },
-    'fetch': {
-        'command': 'uvx',
-        'args': ['mcp-server-fetch']
+    "fetch": {
+        "command": "uvx",
+        "args": ["mcp-server-fetch"]
     }
 }
 
@@ -66,7 +66,7 @@ tools, cleanup = await convert_mcp_to_langchain_tools(
 
 This utility function initializes all specified MCP servers in parallel,
 and returns LangChain Tools
-([`tools: List[BaseTool]`](https://python.langchain.com/api_reference/core/tools/langchain_core.tools.base.BaseTool.html#langchain_core.tools.base.BaseTool))
+([`tools: list[BaseTool]`](https://python.langchain.com/api_reference/core/tools/langchain_core.tools.base.BaseTool.html#langchain_core.tools.base.BaseTool))
 by gathering available MCP tools from the servers,
 and by wrapping them into LangChain tools.
 It also returns an async callback function (`cleanup: McpServerCleanupFn`)
@@ -97,13 +97,62 @@ try [this LangChain application built with the utility](https://github.com/hidey
 For detailed information on how to use this library, please refer to the following document:  
 ["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
 
+## Experimental Features
+
+### Remote MCP Server Support
+
+`mcp_servers` configuration for SSE and Websocket servers are as follows:
+
+```python
+    "sse-server-name": {
+        "url": f"http://{sse_server_host}:{sse_server_port}/..."
+    },
+
+    "ws-server-name": {
+        "url": f"ws://{ws_server_host}:{ws_server_port}/..."
+    },
+```
+
+Note that the key name `"url"` may be changed in the future to match
+the MCP server configurations used by Claude for Desktop once
+it introduces remote server support.
+
+### Working Directory Configuration for Local MCP Servers
+
+The working directory that is used when spawning a local MCP server
+can be specified with the `cwd` key as follows:
+
+```python
+    "local-server-name": {
+        "command": "...",
+        "args": [...],
+        "cwd": "/working/directory"  # the working dir to be use by the server
+    },
+```
+
+### Configuration for MCP Server stderr Redirection
+
+A new key `errlog` has been introduced in to specify a file-like object
+to which MCP server's stderr is redirected.
+
+```python
+    log_path = f"mcp-server-{server_name}.log"
+    log_file = open(log_path, "w")
+    mcp_servers[server_name]["errlog"] = log_file
+```
+
+**NOTE: Why the key name `errlog` for `server_config` was chosen:**  
+Unlike TypeScript SDK's `StdioServerParameters`, the Python
+SDK's `StdioServerParameters` doesn't include `stderr: int`.
+Instead, it calls `stdio_client()` with a separate argument
+`errlog: TextIO`.  I once included `stderr: int` for
+compatibility with the TypeScript version, but decided to
+follow the Python SDK more closely.
+
 ## Limitations
 
-Currently, only text results of tool calls are supported.
-
-Remote MCP server is not supported.
-
-Fatures other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
+- Currently, only text results of tool calls are supported.
+- Fatures other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
 
 ## Change Log
 
