@@ -66,7 +66,7 @@ tools, cleanup = await convert_mcp_to_langchain_tools(
 
 This utility function initializes all specified MCP servers in parallel,
 and returns LangChain Tools
-([`tools: List[BaseTool]`](https://python.langchain.com/api_reference/core/tools/langchain_core.tools.base.BaseTool.html#langchain_core.tools.base.BaseTool))
+([`tools: list[BaseTool]`](https://python.langchain.com/api_reference/core/tools/langchain_core.tools.base.BaseTool.html#langchain_core.tools.base.BaseTool))
 by gathering available MCP tools from the servers,
 and by wrapping them into LangChain tools.
 It also returns an async callback function (`cleanup: McpServerCleanupFn`)
@@ -99,11 +99,9 @@ For detailed information on how to use this library, please refer to the followi
 
 ## Limitations
 
-Currently, only text results of tool calls are supported.
-
-Remote MCP server is not supported.
-
-Fatures other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
+- Currently, only text results of tool calls are supported.
+- Remote MCP server support (SSE / websocket) is not fully tested.
+- Fatures other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
 
 ## Change Log
 

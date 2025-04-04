@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Add support for SSE and Websocket MCP servers
+- Introduced `McpServersConfig` type
+- Changed `stderr` of `McpServersConfig` to `errlog` to follow Python SDK more closely
+
+
 ## [0.1.11] - 2025-03-31
 
 ### Changed
