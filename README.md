@@ -41,6 +41,9 @@ pip install langchain-mcp-tools
 
 ## Quick Start
 
+A minimal but complete working usage example can be found
+[in this example in the langchain-mcp-tools-py-usage repo](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/main/src/example.py)
+
 `convert_mcp_to_langchain_tools()` utility function accepts MCP server configurations
 that follow the same structure as
 [Claude for Desktop](https://modelcontextprotocol.io/quickstart/user),
@@ -77,8 +80,8 @@ The returned tools can be used with LangChain, e.g.:
 ```python
 # from langchain.chat_models import init_chat_model
 llm = init_chat_model(
-    model='claude-3-7-sonnet-latest',
-    model_provider='anthropic'
+    model="claude-3-7-sonnet-latest",
+    model_provider="anthropic"
 )
 
 # from langgraph.prebuilt import create_react_agent
@@ -87,9 +90,6 @@ agent = create_react_agent(
     tools
 )
 ```
-
-Find complete, minimal working usage examples
-[here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/main/src/example.py)
 
 For hands-on experimentation with MCP server integration,
 try [this LangChain application built with the utility](https://github.com/hideya/mcp-client-langchain-py)
@@ -113,14 +113,17 @@ For detailed information on how to use this library, please refer to the followi
     },
 ```
 
-Note that the key name `"url"` may be changed in the future to match
+Note that the key `"url"` may be changed in the future to match
 the MCP server configurations used by Claude for Desktop once
 it introduces remote server support.
 
+A usage example can be found [here](
+https://github.com/hideya/langchain-mcp-tools-py-usage/blob/e759edf886bdaef7c162e7f228e32fbb43993e37/src/example.py#L43-L54)
+
 ### Working Directory Configuration for Local MCP Servers
 
-The working directory that is used when spawning a local MCP server
-can be specified with the `cwd` key as follows:
+The working directory that is used when spawning a local (stdio) MCP server
+can be specified with the `"cwd"` key as follows:
 
 ```python
     "local-server-name": {
@@ -130,10 +133,12 @@ can be specified with the `cwd` key as follows:
     },
 ```
 
-### Configuration for MCP Server stderr Redirection
+The key name `cwd` is derived from Python SDK's `StdioServerParameters`.
 
-A new key `errlog` has been introduced in to specify a file-like object
-to which MCP server's stderr is redirected.
+### Configuration for Local MCP Server `stderr` Redirection
+
+A new key `"errlog"` has been introduced in to specify a file-like object
+to which local (stdio) MCP server's stderr is redirected.
 
 ```python
     log_path = f"mcp-server-{server_name}.log"
@@ -141,7 +146,10 @@ to which MCP server's stderr is redirected.
     mcp_servers[server_name]["errlog"] = log_file
 ```
 
-**NOTE: Why the key name `errlog` for `server_config` was chosen:**  
+A usage example can be found [here](
+https://github.com/hideya/langchain-mcp-tools-py-usage/blob/e759edf886bdaef7c162e7f228e32fbb43993e37/src/example.py#L88-L108)
+
+**NOTE: Why the key name `errlog` was chosen:**  
 Unlike TypeScript SDK's `StdioServerParameters`, the Python
 SDK's `StdioServerParameters` doesn't include `stderr: int`.
 Instead, it calls `stdio_client()` with a separate argument
@@ -152,7 +160,7 @@ follow the Python SDK more closely.
 ## Limitations
 
 - Currently, only text results of tool calls are supported.
-- Fatures other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
+- MCP features other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
 
 ## Change Log
 
