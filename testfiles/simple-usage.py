@@ -37,6 +37,11 @@ def init_logger() -> logging.Logger:
 async def run() -> None:
     load_dotenv()
 
+    # If you are interested in testing the SSE/WS server connection,
+    # comment out one of the following code snippets and one of the
+    # appropriate "weather" server configurations, while commenting
+    # out the one for the stdio server
+
     sse_server_process, sse_server_port = start_mcp_server(
         "SSE",  "npx -y @h1deya/mcp-server-weather")
 
@@ -75,24 +80,27 @@ async def run() -> None:
             },
         }
 
-        # Set a file-like object to which MCP server's stderr is redirected
-        # NOTE: Why the key name `errlog` for `server_config` was chosen:
-        # Unlike TypeScript SDK's `StdioServerParameters`, the Python
-        # SDK's `StdioServerParameters` doesn't include `stderr: int`.
-        # Instead, it calls `stdio_client()` with a separate argument
-        # `errlog: TextIO`.  I once included `stderr: int` for
-        # compatibility with the TypeScript version, but decided to
-        # follow the Python SDK more closely.
-        log_file_exit_stack = ExitStack()
-        for server_name in mcp_servers:
-            server_config = mcp_servers[server_name]
-            # Skip URL-based servers (no command)
-            if "command" not in server_config or not server_config["command"]:
-                continue
-            log_path = f"mcp-server-{server_name}.log"
-            log_file = open(log_path, "w")
-            server_config["errlog"] = log_file
-            log_file_exit_stack.callback(log_file.close)
+        # If you are interested in MCP server's stderr redirection,
+        # comment out the following code snippets.
+
+        # # Set a file-like object to which MCP server's stderr is redirected
+        # # NOTE: Why the key name `errlog` for `server_config` was chosen:
+        # # Unlike TypeScript SDK's `StdioServerParameters`, the Python
+        # # SDK's `StdioServerParameters` doesn't include `stderr: int`.
+        # # Instead, it calls `stdio_client()` with a separate argument
+        # # `errlog: TextIO`.  I once included `stderr: int` for
+        # # compatibility with the TypeScript version, but decided to
+        # # follow the Python SDK more closely.
+        # log_file_exit_stack = ExitStack()
+        # for server_name in mcp_servers:
+        #     server_config = mcp_servers[server_name]
+        #     # Skip URL-based servers (no command)
+        #     if "command" not in server_config:
+        #         continue
+        #     log_path = f"mcp-server-{server_name}.log"
+        #     log_file = open(log_path, "w")
+        #     server_config["errlog"] = log_file
+        #     log_file_exit_stack.callback(log_file.close)
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
             mcp_servers,
@@ -135,18 +143,25 @@ async def run() -> None:
     finally:
         if cleanup is not None:
             await cleanup()
+
+        # the following only needed when testing the `errlog` key
         if "log_file_exit_stack" in locals():
             log_file_exit_stack.close()
+
+        # the followings only needed when testing the `url` key
         if "sse_server_process" in locals():
             sse_server_process.terminate()
         if "ws_server_process" in locals():
             ws_server_process.terminate()
 
 
-def start_mcp_server(transport_type, mcp_server_run_command, wait_time=1):
+# The following only needed when testing the SSE/WS MCP server connection
+def start_mcp_server(transport_type, mcp_server_run_command, wait_time=2):
     """
     Start an MCP server process via supergateway with the specified transport
-    type.
+    type.  Supergateway runs MCP stdio-based servers over SSE or WebSockets
+    and is used here to run local SSE/WS servers for connection testing.
+    Ref: https://github.com/supercorp-ai/supergateway
 
     Args:
         transport_type (str): The transport type, either 'sse' or 'ws'
@@ -173,18 +188,19 @@ def start_mcp_server(transport_type, mcp_server_run_command, wait_time=1):
         "--stdio",
         mcp_server_run_command,
         "--port", str(server_port),
-        "--messagePath", "/message"
     ]
 
     # Add transport-specific arguments
     if transport_type.lower() == 'sse':
         command.extend([
             "--baseUrl", f"http://localhost:{server_port}",
-            "--ssePath", "/sse"
+            "--ssePath", "/sse",
+            "--messagePath", "/message"
         ])
     elif transport_type.lower() == 'ws':
         command.extend([
-            "--outputTransport", "ws"
+            "--outputTransport", "ws",
+            "--messagePath", "/message"
         ])
     else:
         raise ValueError(f"Unsupported transport type: {transport_type}")
