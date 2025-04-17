@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-04-17
+
+### Changed
+- Add new key "headers" to url based config for SSE server
+- Update README.md for the newly introduced headers key
+- Add README_DEV.md
+- Update dependencies
+
+
 ## [0.2.1] - 2025-04-11
 
 ### Changed
