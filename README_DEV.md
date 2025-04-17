@@ -1,6 +1,6 @@
-# Making Changes to langchain-mcp-tools
+# Making Changes to langchain-mcp-tools-py
 
-Thank you for your interest in langchain-mcp-tools!  
+Thank you for your interest in langchain-mcp-tools-py!  
 This guide is focused on the technical aspects of making changes to this project.
 
 ## Development Environment Setup
@@ -9,7 +9,7 @@ This guide is focused on the technical aspects of making changes to this project
 
 - Python 3.11 or higher
 - [uv](https://github.com/astral-sh/uv) - A fast Python package installer and resolver
-- `make` - The project uses Makefile to simplify the development workflow
+- `make` - The project uses `Makefile` to simplify the development workflow
 - git
 
 ### Setting Up Your Environment

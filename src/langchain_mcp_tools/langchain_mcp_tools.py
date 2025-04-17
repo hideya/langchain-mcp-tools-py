@@ -48,10 +48,6 @@ class McpServerCommandBasedConfig(TypedDict):
 class McpServerUrlBasedConfig(TypedDict):
     url: str
     headers: NotRequired[dict[str, str] | None]
-    args: NotRequired[list[str] | None]
-    env: NotRequired[dict[str, str] | None]
-    cwd: NotRequired[str | None]
-    errlog: NotRequired[TextIO | None]
 
 
 McpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig

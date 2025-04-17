@@ -36,7 +36,7 @@ def init_logger() -> logging.Logger:
 
 async def run() -> None:
     load_dotenv()
-
+    bearer_token = "token123"
     # If you are interested in testing the SSE/WS server connection,
     # uncomment one of the following code snippets and one of the
     # appropriate "weather" server configurations, while commenting
@@ -73,7 +73,9 @@ async def run() -> None:
             #     ]
             # },
             "weather": {
-                "url": f"http://localhost:{sse_server_port}/sse"
+                "url": f"http://localhost:{sse_server_port}/sse",
+                # only tests syntax, not functionality
+                "headers": {"Authorization": f"Bearer {bearer_token}"}
             },
             # "weather": {
             #     "url": f"ws://localhost:{ws_server_port}/message"
