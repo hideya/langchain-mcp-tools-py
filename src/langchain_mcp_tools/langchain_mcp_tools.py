@@ -40,15 +40,16 @@ except ImportError as e:
 class McpServerCommandBasedConfig(TypedDict):
     command: str
     args: NotRequired[list[str] | None]
-    env:  NotRequired[dict[str, str] | None]
+    env: NotRequired[dict[str, str] | None]
     cwd: NotRequired[str | None]
     errlog: NotRequired[TextIO | None]
 
 
 class McpServerUrlBasedConfig(TypedDict):
     url: str
+    headers: NotRequired[dict[str, str] | None]
     args: NotRequired[list[str] | None]
-    env:  NotRequired[dict[str, str] | None]
+    env: NotRequired[dict[str, str] | None]
     cwd: NotRequired[str | None]
     errlog: NotRequired[TextIO | None]
 
@@ -103,12 +104,13 @@ async def spawn_mcp_server_and_get_transport(
                     f'initializing with: {server_config}')
 
         url_str = str(server_config.get('url'))  # None becomes 'None'
+        headers = server_config.get("headers", None)
         # no exception thrown even for a malformed URL
         url_scheme = urlparse(url_str).scheme
 
         if url_scheme in ('http', 'https'):
             transport = await exit_stack.enter_async_context(
-                sse_client(url_str)
+                sse_client(url_str, headers=headers)
             )
 
         elif url_scheme in ('ws', 'wss'):
