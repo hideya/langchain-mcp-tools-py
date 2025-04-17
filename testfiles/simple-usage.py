@@ -36,7 +36,7 @@ def init_logger() -> logging.Logger:
 
 async def run() -> None:
     load_dotenv()
-    bearer_token = "token123"
+    bearer_token = "token42"
     # If you are interested in testing the SSE/WS server connection,
     # uncomment one of the following code snippets and one of the
     # appropriate "weather" server configurations, while commenting

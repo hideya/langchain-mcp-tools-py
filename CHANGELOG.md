@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Add new key "headers" to url based config for SSE server
 - Update README.md for the newly introduced headers key
 - Add README_DEV.md
+- Use double quotes instead of single quotes for string literals
 - Update dependencies
 
 

@@ -120,7 +120,7 @@ Note that the key `"url"` may be changed in the future to match
 the MCP server configurations used by Claude for Desktop once
 it introduces remote server support.
 
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/cf96ddc43750708ef3b244bad95714f0f2fe1d28/src/example.py#L43-L54)
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L43-L54)
 
 ### Passing HTTP Headers to SSE Connection
 
@@ -165,8 +165,7 @@ to which local (stdio) MCP server's stderr is redirected.
     mcp_servers[server_name]["errlog"] = log_file
 ```
 
-A usage example can be found [here](
-https://github.com/hideya/langchain-mcp-tools-py-usage/blob/cf96ddc43750708ef3b244bad95714f0f2fe1d28/src/example.py#L91-L108)
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108)
 
 **NOTE: Why the key name `errlog` was chosen:**  
 Unlike TypeScript SDK's `StdioServerParameters`, the Python
