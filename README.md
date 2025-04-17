@@ -5,11 +5,14 @@ This package is intended to simplify the use of
 server tools with LangChain / Python.
 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/),
-an open source technology
+an open standard
 [announced by Anthropic](https://www.anthropic.com/news/model-context-protocol),
 dramatically expands LLM’s scope
 by enabling external tool and resource integration, including
-Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
+GitHub, Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
+
+MCP is likely to become the de facto industry standard as 
+[OpenAI has announced its adoption](https://techcrunch.com/2025/03/26/openai-adopts-rival-anthropics-standard-for-connecting-ai-models-to-data).
 
 Over 2000 functional components available as MCP servers:
 

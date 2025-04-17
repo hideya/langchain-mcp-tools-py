@@ -38,14 +38,14 @@ async def run() -> None:
     load_dotenv()
 
     # If you are interested in testing the SSE/WS server connection,
-    # comment out one of the following code snippets and one of the
+    # uncomment one of the following code snippets and one of the
     # appropriate "weather" server configurations, while commenting
     # out the one for the stdio server
 
-    sse_server_process, sse_server_port = start_mcp_server(
+    sse_server_process, sse_server_port = start_remote_mcp_server_locally(
         "SSE",  "npx -y @h1deya/mcp-server-weather")
 
-    ws_server_process, ws_server_port = start_mcp_server(
+    ws_server_process, ws_server_port = start_remote_mcp_server_locally(
         "WS",  "npx -y @h1deya/mcp-server-weather")
 
     try:
@@ -72,16 +72,16 @@ async def run() -> None:
             #         "@h1deya/mcp-server-weather"
             #     ]
             # },
-            # "weather": {
-            #     "url": f"http://localhost:{sse_server_port}/sse"
-            # },
             "weather": {
-                "url": f"ws://localhost:{ws_server_port}/message"
+                "url": f"http://localhost:{sse_server_port}/sse"
             },
+            # "weather": {
+            #     "url": f"ws://localhost:{ws_server_port}/message"
+            # },
         }
 
         # If you are interested in MCP server's stderr redirection,
-        # comment out the following code snippets.
+        # uncomment the following code snippets.
 
         # # Set a file-like object to which MCP server's stderr is redirected
         # # NOTE: Why the key name `errlog` for `server_config` was chosen:
@@ -156,7 +156,8 @@ async def run() -> None:
 
 
 # The following only needed when testing the SSE/WS MCP server connection
-def start_mcp_server(transport_type, mcp_server_run_command, wait_time=2):
+def start_remote_mcp_server_locally(
+        transport_type, mcp_server_run_command, wait_time=2):
     """
     Start an MCP server process via supergateway with the specified transport
     type.  Supergateway runs MCP stdio-based servers over SSE or WebSockets
