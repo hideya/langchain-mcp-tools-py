@@ -5,11 +5,14 @@ This package is intended to simplify the use of
 server tools with LangChain / Python.
 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/),
-an open source technology
+an open standard
 [announced by Anthropic](https://www.anthropic.com/news/model-context-protocol),
 dramatically expands LLM’s scope
 by enabling external tool and resource integration, including
-Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
+GitHub, Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
+
+MCP is likely to become the de facto industry standard as 
+[OpenAI has announced its adoption](https://techcrunch.com/2025/03/26/openai-adopts-rival-anthropics-standard-for-connecting-ai-models-to-data).
 
 Over 2000 functional components available as MCP servers:
 
@@ -117,8 +120,23 @@ Note that the key `"url"` may be changed in the future to match
 the MCP server configurations used by Claude for Desktop once
 it introduces remote server support.
 
-A usage example can be found [here](
-https://github.com/hideya/langchain-mcp-tools-py-usage/blob/e759edf886bdaef7c162e7f228e32fbb43993e37/src/example.py#L43-L54)
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L43-L54)
+
+### Passing HTTP Headers to SSE Connection
+
+A new key `"headers"` has been introduced to pass HTTP headers to the SSE (Server-Sent Events) connection.  
+It takes  `dict[str, str]` and is primarily intended to support SSE MCP servers
+that require authentication via bearer tokens or other custom headers.
+
+```python
+    "sse-server-name": {
+        "url": f"http://{sse_server_host}:{sse_server_port}/..."
+        "headers": {"Authorization": f"Bearer {bearer_token}"}
+    },
+```
+
+The key name `header` is derived from the Python SDK
+[`sse_client()`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/sse.py#L24) argument name.
 
 ### Working Directory Configuration for Local MCP Servers
 
@@ -133,11 +151,12 @@ can be specified with the `"cwd"` key as follows:
     },
 ```
 
-The key name `cwd` is derived from Python SDK's `StdioServerParameters`.
+The key name `cwd` is derived from
+Python SDK's [`StdioServerParameters`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L76-L77).
 
 ### Configuration for Local MCP Server `stderr` Redirection
 
-A new key `"errlog"` has been introduced in to specify a file-like object
+A new key `"errlog"` has been introduced to specify a file-like object
 to which local (stdio) MCP server's stderr is redirected.
 
 ```python
@@ -146,14 +165,14 @@ to which local (stdio) MCP server's stderr is redirected.
     mcp_servers[server_name]["errlog"] = log_file
 ```
 
-A usage example can be found [here](
-https://github.com/hideya/langchain-mcp-tools-py-usage/blob/e759edf886bdaef7c162e7f228e32fbb43993e37/src/example.py#L88-L108)
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108)
 
 **NOTE: Why the key name `errlog` was chosen:**  
 Unlike TypeScript SDK's `StdioServerParameters`, the Python
-SDK's `StdioServerParameters` doesn't include `stderr: int`.
-Instead, it calls `stdio_client()` with a separate argument
-`errlog: TextIO`.  I once included `stderr: int` for
+SDK's `StdioServerParameters` doesn't include `stderr: int`.  
+Instead, it calls [`stdio_client()` with a separate argument
+`errlog: TextIO`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
+I once included `stderr: int` for
 compatibility with the TypeScript version, but decided to
 follow the Python SDK more closely.
 

@@ -32,8 +32,8 @@ try:
     from pydantic import BaseModel
     # from pydantic_core import to_json
 except ImportError as e:
-    print(f'\nError: Required package not found: {e}')
-    print('Please ensure all required packages are installed\n')
+    print(f"\nError: Required package not found: {e}")
+    print("Please ensure all required packages are installed\n")
     sys.exit(1)
 
 
@@ -48,10 +48,6 @@ class McpServerCommandBasedConfig(TypedDict):
 class McpServerUrlBasedConfig(TypedDict):
     url: str
     headers: NotRequired[dict[str, str] | None]
-    args: NotRequired[list[str] | None]
-    env: NotRequired[dict[str, str] | None]
-    cwd: NotRequired[str | None]
-    errlog: NotRequired[TextIO | None]
 
 
 McpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig
@@ -60,11 +56,11 @@ McpServersConfig = dict[str, McpServerConfig]
 
 
 def fix_schema(schema: dict) -> dict:
-    """Converts JSON Schema 'type': ['string', 'null'] to 'anyOf' format"""
+    """Converts JSON Schema "type": ["string", "null"] to "anyOf" format"""
     if isinstance(schema, dict):
-        if 'type' in schema and isinstance(schema['type'], list):
-            schema['anyOf'] = [{'type': t} for t in schema['type']]
-            del schema['type']  # Remove 'type' and standardize to 'anyOf'
+        if "type" in schema and isinstance(schema["type"], list):
+            schema["anyOf"] = [{"type": t} for t in schema["type"]]
+            del schema["type"]  # Remove "type" and standardize to "anyOf"
         for key, value in schema.items():
             schema[key] = fix_schema(value)  # Apply recursively
     return schema
@@ -101,19 +97,19 @@ async def spawn_mcp_server_and_get_transport(
     """
     try:
         logger.info(f'MCP server "{server_name}": '
-                    f'initializing with: {server_config}')
+                    f"initializing with: {server_config}")
 
-        url_str = str(server_config.get('url'))  # None becomes 'None'
+        url_str = str(server_config.get("url"))  # None becomes "None"
         headers = server_config.get("headers", None)
         # no exception thrown even for a malformed URL
         url_scheme = urlparse(url_str).scheme
 
-        if url_scheme in ('http', 'https'):
+        if url_scheme in ("http", "https"):
             transport = await exit_stack.enter_async_context(
                 sse_client(url_str, headers=headers)
             )
 
-        elif url_scheme in ('ws', 'wss'):
+        elif url_scheme in ("ws", "wss"):
             transport = await exit_stack.enter_async_context(
                 websocket_client(url_str)
             )
@@ -123,21 +119,21 @@ async def spawn_mcp_server_and_get_transport(
             # To avoid confusion, it was decided to automatically append it
             # to the env if not explicitly set by the config.
             config = cast(McpServerCommandBasedConfig, server_config)
-            # env = config.get('env', {}) does't work since it can yield None
-            env_val = config.get('env')
+            # env = config.get("env", {}) does't work since it can yield None
+            env_val = config.get("env")
             env = {} if env_val is None else dict(env_val)
-            if 'PATH' not in env:
-                env['PATH'] = os.environ.get('PATH', '')
+            if "PATH" not in env:
+                env["PATH"] = os.environ.get("PATH", "")
 
             # Use stdio client for commands
-            # args = config.get('args', []) does't work since it can yield None
-            args_val = config.get('args')
+            # args = config.get("args", []) does't work since it can yield None
+            args_val = config.get("args")
             args = [] if args_val is None else list(args_val)
             server_parameters = StdioServerParameters(
-                command=config.get('command', ''),
+                command=config.get("command", ""),
                 args=args,
                 env=env,
-                cwd=config.get('cwd', None)
+                cwd=config.get("cwd", None)
             )
 
             # Initialize stdio client and register it with exit stack for
@@ -149,13 +145,13 @@ async def spawn_mcp_server_and_get_transport(
             # `errlog: TextIO`.  I once included `stderr: int` for
             # compatibility with the TypeScript version, but decided to
             # follow the Python SDK more closely.
-            errlog_val = server_config.get('errlog')
-            kwargs = {'errlog': errlog_val} if errlog_val is not None else {}
+            errlog_val = server_config.get("errlog")
+            kwargs = {"errlog": errlog_val} if errlog_val is not None else {}
             transport = await exit_stack.enter_async_context(
                 stdio_client(server_parameters, **kwargs)
             )
     except Exception as e:
-        logger.error(f'Error spawning MCP server: {str(e)}')
+        logger.error(f"Error spawning MCP server: {str(e)}")
         raise
 
     return transport
@@ -215,8 +211,8 @@ async def get_mcp_server_tools(
 
             # Define adapter class to convert MCP tool to LangChain format
             class McpToLangChainAdapter(BaseTool):
-                name: str = tool.name or 'NO NAME'
-                description: str = tool.description or ''
+                name: str = tool.name or "NO NAME"
+                description: str = tool.description or ""
                 # Convert JSON schema to Pydantic model for argument validation
                 args_schema: type[BaseModel] = jsonschema_to_pydantic(
                     fix_schema(tool.inputSchema)  # Apply schema conversion
@@ -225,7 +221,7 @@ async def get_mcp_server_tools(
 
                 def _run(self, **kwargs: Any) -> NoReturn:
                     raise NotImplementedError(
-                        'MCP tools only support async operations'
+                        "MCP tools only support async operations"
                     )
 
                 async def _arun(self, **kwargs: Any) -> Any:
@@ -234,22 +230,22 @@ async def get_mcp_server_tools(
                     Logs input/output and handles errors.
                     """
                     logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
-                                f'received input: {kwargs}')
+                                f"received input: {kwargs}")
 
                     try:
                         result = await session.call_tool(self.name, kwargs)
 
-                        if hasattr(result, 'isError') and result.isError:
+                        if hasattr(result, "isError") and result.isError:
                             raise ToolException(
-                                f'Tool execution failed: {result.content}'
+                                f"Tool execution failed: {result.content}"
                             )
 
-                        if not hasattr(result, 'content'):
+                        if not hasattr(result, "content"):
                             return str(result)
 
                         # The return type of `BaseTool`'s `arun` is `str`.
                         try:
-                            result_content_text = '\n\n'.join(
+                            result_content_text = "\n\n".join(
                                 item.text
                                 for item in result.content
                                 if isinstance(item, mcp_types.TextContent)
@@ -263,20 +259,20 @@ async def get_mcp_server_tools(
 
                         except KeyError as e:
                             result_content_text = (
-                                f'Error in parsing result.content: {str(e)}; '
-                                f'contents: {repr(result.content)}'
+                                f"Error in parsing result.content: {str(e)}; "
+                                f"contents: {repr(result.content)}"
                             )
 
                         # Log rough result size for monitoring
                         size = len(result_content_text.encode())
                         logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
-                                    f'received result (size: {size})')
+                                    f"received result (size: {size})")
 
                         # If no text content, return a clear message
                         # describing the situation.
                         result_content_text = (
                             result_content_text or
-                            'No text content available in response'
+                            "No text content available in response"
                         )
 
                         return result_content_text
@@ -284,21 +280,21 @@ async def get_mcp_server_tools(
                     except Exception as e:
                         logger.warn(
                             f'MCP tool "{server_name}"/"{tool.name}" '
-                            f'caused error:  {str(e)}'
+                            f"caused error:  {str(e)}"
                         )
                         if self.handle_tool_error:
-                            return f'Error executing MCP tool: {str(e)}'
+                            return f"Error executing MCP tool: {str(e)}"
                         raise
 
             langchain_tools.append(McpToLangChainAdapter())
 
         # Log available tools for debugging
         logger.info(f'MCP server "{server_name}": {len(langchain_tools)} '
-                    f'tool(s) available:')
+                    f"tool(s) available:")
         for tool in langchain_tools:
-            logger.info(f'- {tool.name}')
+            logger.info(f"- {tool.name}")
     except Exception as e:
-        logger.error(f'Error getting MCP tools: {str(e)}')
+        logger.error(f"Error getting MCP tools: {str(e)}")
         raise
 
     return langchain_tools
@@ -308,7 +304,7 @@ async def get_mcp_server_tools(
 def init_logger() -> logging.Logger:
     logging.basicConfig(
         level=logging.INFO,  # logging.DEBUG,
-        format='\x1b[90m[%(levelname)s]\x1b[0m %(message)s'
+        format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
     )
     return logging.getLogger()
 
@@ -344,11 +340,11 @@ async def convert_mcp_to_langchain_tools(
 
     Example:
         server_configs = {
-            'fetch': {
-                'command': 'uvx', 'args': ['mcp-server-fetch']
+            "fetch": {
+                "command": "uvx", "args": ["mcp-server-fetch"]
             },
-            'weather': {
-                'command': 'npx', 'args': ['-y','@h1deya/mcp-server-weather']
+            "weather": {
+                "command": "npx", "args": ["-y","@h1deya/mcp-server-weather"]
             }
         }
         tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
@@ -402,9 +398,9 @@ async def convert_mcp_to_langchain_tools(
         await async_exit_stack.aclose()
 
     # Log summary of initialized tools
-    logger.info(f'MCP servers initialized: {len(langchain_tools)} tool(s) '
-                f'available in total')
+    logger.info(f"MCP servers initialized: {len(langchain_tools)} tool(s) "
+                f"available in total")
     for tool in langchain_tools:
-        logger.debug(f'- {tool.name}')
+        logger.debug(f"- {tool.name}")
 
     return langchain_tools, mcp_cleanup
