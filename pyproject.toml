@@ -19,7 +19,6 @@ dependencies = [
     "langchain>=0.3.14",
     "mcp>=1.6.0",
     "pyjson5>=1.6.8",
-    "websockets>=15.0.1",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +30,7 @@ dev = [
     "langgraph>=0.2.62",
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.2",
+    "websockets>=15.0.1",
 ]
 
 [tool.setuptools]

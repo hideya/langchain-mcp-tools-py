@@ -466,7 +466,6 @@ dependencies = [
     { name = "langchain" },
     { name = "mcp" },
     { name = "pyjson5" },
-    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -478,6 +477,7 @@ dev = [
     { name = "langgraph" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -493,7 +493,7 @@ requires-dist = [
     { name = "pyjson5", specifier = ">=1.6.8" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.4" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.25.2" },
-    { name = "websockets", specifier = ">=15.0.1" },
+    { name = "websockets", marker = "extra == 'dev'", specifier = ">=15.0.1" },
 ]
 provides-extras = ["dev"]
 
