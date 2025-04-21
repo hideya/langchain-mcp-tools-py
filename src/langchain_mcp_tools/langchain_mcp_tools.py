@@ -100,7 +100,8 @@ async def spawn_mcp_server_and_get_transport(
                     f"initializing with: {server_config}")
 
         url_str = str(server_config.get("url"))  # None becomes "None"
-        headers = server_config.get("headers", None)
+        headers = (cast(McpServerUrlBasedConfig, server_config)
+                   .get("headers", None))
         # no exception thrown even for a malformed URL
         url_scheme = urlparse(url_str).scheme
 
@@ -145,7 +146,8 @@ async def spawn_mcp_server_and_get_transport(
             # `errlog: TextIO`.  I once included `stderr: int` for
             # compatibility with the TypeScript version, but decided to
             # follow the Python SDK more closely.
-            errlog_val = server_config.get("errlog")
+            errlog_val = (cast(McpServerCommandBasedConfig, server_config)
+                          .get("errlog"))
             kwargs = {"errlog": errlog_val} if errlog_val is not None else {}
             transport = await exit_stack.enter_async_context(
                 stdio_client(server_parameters, **kwargs)

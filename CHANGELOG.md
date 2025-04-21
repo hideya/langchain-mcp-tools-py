@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Add test files for SSE connection with authentication
+
+
 ## [0.2.2] - 2025-04-17
 
 ### Changed
