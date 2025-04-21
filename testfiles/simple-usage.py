@@ -1,10 +1,7 @@
 # Standard library imports
 import asyncio
 import logging
-import socket
-import subprocess
 import sys
-import time
 from contextlib import ExitStack
 
 # Third-party imports
@@ -23,6 +20,7 @@ from langchain_mcp_tools import (
     convert_mcp_to_langchain_tools,
     McpServersConfig,
 )
+from remote_server_utils import start_remote_mcp_server_locally
 
 
 # A very simple logger
@@ -43,10 +41,10 @@ async def run() -> None:
     # out the one for the stdio server
 
     sse_server_process, sse_server_port = start_remote_mcp_server_locally(
-        "SSE",  "npx -y @h1deya/mcp-server-weather")
+        "SSE", "npx -y @h1deya/mcp-server-weather")
 
     ws_server_process, ws_server_port = start_remote_mcp_server_locally(
-        "WS",  "npx -y @h1deya/mcp-server-weather")
+        "WS", "npx -y @h1deya/mcp-server-weather")
 
     try:
         mcp_servers: McpServersConfig = {
@@ -155,72 +153,6 @@ async def run() -> None:
             sse_server_process.terminate()
         if "ws_server_process" in locals():
             ws_server_process.terminate()
-
-
-# The following only needed when testing the SSE/WS MCP server connection
-def start_remote_mcp_server_locally(
-        transport_type, mcp_server_run_command, wait_time=2):
-    """
-    Start an MCP server process via supergateway with the specified transport
-    type.  Supergateway runs MCP stdio-based servers over SSE or WebSockets
-    and is used here to run local SSE/WS servers for connection testing.
-    Ref: https://github.com/supercorp-ai/supergateway
-
-    Args:
-        transport_type (str): The transport type, either 'sse' or 'ws'
-        mcp_server_package (str): The NPM package name for the MCP server
-        wait_time (int): Time to wait for the server to start listening on its
-        port
-
-    Returns:
-        tuple: (server_process, server_port)
-    """
-    def find_free_port():
-        """Find and return a free port on localhost."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("", 0))  # Bind to a free port provided by the system
-            return s.getsockname()[1]  # Return the port number assigned
-
-    server_port = find_free_port()
-
-    # Base command common to both server types
-    command = [
-        "npx",
-        "-y",
-        "supergateway",
-        "--stdio",
-        mcp_server_run_command,
-        "--port", str(server_port),
-    ]
-
-    # Add transport-specific arguments
-    if transport_type.lower() == 'sse':
-        command.extend([
-            "--baseUrl", f"http://localhost:{server_port}",
-            "--ssePath", "/sse",
-            "--messagePath", "/message"
-        ])
-    elif transport_type.lower() == 'ws':
-        command.extend([
-            "--outputTransport", "ws",
-            "--messagePath", "/message"
-        ])
-    else:
-        raise ValueError(f"Unsupported transport type: {transport_type}")
-
-    # Start the server process
-    server_process = subprocess.Popen(
-        command,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-        text=True
-    )
-
-    print(f"Started {transport_type.upper()} MCP Server Process with PID:"
-          f" {server_process.pid}")
-    time.sleep(wait_time)  # wait until the server starts listening on the port
-
-    return server_process, server_port
 
 
 def main() -> None:

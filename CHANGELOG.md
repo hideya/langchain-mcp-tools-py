@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Add test files for SSE connection with authentication
+- Add Sphinx documentation with Google-style docstrings
+
+
 ## [0.2.2] - 2025-04-17
 
 ### Changed

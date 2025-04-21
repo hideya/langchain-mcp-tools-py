@@ -122,7 +122,7 @@ it introduces remote server support.
 
 A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L43-L54)
 
-### Passing HTTP Headers to SSE Connection
+### Authentication Support for SSE Connections
 
 A new key `"headers"` has been introduced to pass HTTP headers to the SSE (Server-Sent Events) connection.  
 It takes  `dict[str, str]` and is primarily intended to support SSE MCP servers
@@ -154,7 +154,7 @@ can be specified with the `"cwd"` key as follows:
 The key name `cwd` is derived from
 Python SDK's [`StdioServerParameters`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L76-L77).
 
-### Configuration for Local MCP Server `stderr` Redirection
+### stderr Redirection for Local MCP Server
 
 A new key `"errlog"` has been introduced to specify a file-like object
 to which local (stdio) MCP server's stderr is redirected.

@@ -49,6 +49,14 @@ run-simple-usage: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/simple-usage.py
 
+run-sse-auth-test-client: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/sse-auth-test-client.py --no-server
+
+run-sse-auth-test-server: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/sse-auth-test-server.py
+
 clean:
 	git clean -fdxn -e .env
 	@read -p 'OK?'
