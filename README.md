@@ -122,7 +122,7 @@ it introduces remote server support.
 
 A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L43-L54)
 
-### Passing HTTP Headers to SSE Connection
+### Authentication Support for SSE Connections
 
 A new key `"headers"` has been introduced to pass HTTP headers to the SSE (Server-Sent Events) connection.  
 It takes  `dict[str, str]` and is primarily intended to support SSE MCP servers
