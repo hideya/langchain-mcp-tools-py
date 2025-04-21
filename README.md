@@ -154,7 +154,7 @@ can be specified with the `"cwd"` key as follows:
 The key name `cwd` is derived from
 Python SDK's [`StdioServerParameters`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L76-L77).
 
-### Configuration for Local MCP Server `stderr` Redirection
+### stderr Redirection for Local MCP Server
 
 A new key `"errlog"` has been introduced to specify a file-like object
 to which local (stdio) MCP server's stderr is redirected.
