@@ -56,7 +56,14 @@ McpServersConfig = dict[str, McpServerConfig]
 
 
 def fix_schema(schema: dict) -> dict:
-    """Converts JSON Schema "type": ["string", "null"] to "anyOf" format"""
+    """Converts JSON Schema "type": ["string", "null"] to "anyOf" format.
+    
+    Args:
+        schema: A JSON schema dictionary
+        
+    Returns:
+        Modified schema with converted type formats
+    """
     if isinstance(schema, dict):
         if "type" in schema and isinstance(schema["type"], list):
             schema["anyOf"] = [{"type": t} for t in schema["type"]]
@@ -80,8 +87,7 @@ async def spawn_mcp_server_and_get_transport(
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> Transport:
-    """
-    Spawns an MCP server process and establishes communication channels.
+    """Spawns an MCP server process and establishes communication channels.
 
     Args:
         server_name: Server instance name to use for better logging
@@ -165,8 +171,7 @@ async def get_mcp_server_tools(
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> list[BaseTool]:
-    """
-    Retrieves and converts MCP server tools to LangChain format.
+    """Retrieves and converts MCP server tools to LangChain format.
 
     Args:
         server_name: Server instance name to use for better logging
@@ -227,9 +232,18 @@ async def get_mcp_server_tools(
                     )
 
                 async def _arun(self, **kwargs: Any) -> Any:
-                    """
-                    Asynchronously executes the tool with given arguments.
+                    """Asynchronously executes the tool with given arguments.
+                    
                     Logs input/output and handles errors.
+                    
+                    Args:
+                        **kwargs: Arguments to be passed to the MCP tool
+                        
+                    Returns:
+                        Formatted response from the MCP tool as a string
+                        
+                    Raises:
+                        ToolException: If the tool execution fails
                     """
                     logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
                                 f"received input: {kwargs}")
@@ -304,6 +318,11 @@ async def get_mcp_server_tools(
 
 # A very simple pre-configured logger for fallback
 def init_logger() -> logging.Logger:
+    """Creates a simple pre-configured logger.
+    
+    Returns:
+        A configured Logger instance
+    """
     logging.basicConfig(
         level=logging.INFO,  # logging.DEBUG,
         format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
@@ -331,16 +350,17 @@ async def convert_mcp_to_langchain_tools(
             configurations, where each configuration contains command, args,
             and env settings
         logger: Logger instance to use for logging events and errors.
-           If None, uses module logger with fallback to a pre-configured
-           logger when no root handlers exist.
+            If None, uses module logger with fallback to a pre-configured
+            logger when no root handlers exist.
 
     Returns:
         A tuple containing:
-            - List of converted LangChain tools from all servers
-            - Async cleanup function to properly shutdown all server
-                connections
+
+        * List of converted LangChain tools from all servers
+        * Async cleanup function to properly shutdown all server connections
 
     Example:
+
         server_configs = {
             "fetch": {
                 "command": "uvx", "args": ["mcp-server-fetch"]
@@ -349,8 +369,11 @@ async def convert_mcp_to_langchain_tools(
                 "command": "npx", "args": ["-y","@h1deya/mcp-server-weather"]
             }
         }
+        
         tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
+        
         # Use tools...
+        
         await cleanup()
     """
 
@@ -396,7 +419,7 @@ async def convert_mcp_to_langchain_tools(
 
     # Define a cleanup function to properly shut down all servers
     async def mcp_cleanup() -> None:
-        """Closes all server connections and cleans up resources"""
+        """Closes all server connections and cleans up resources."""
         await async_exit_stack.aclose()
 
     # Log summary of initialized tools
