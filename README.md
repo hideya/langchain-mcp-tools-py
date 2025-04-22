@@ -143,6 +143,11 @@ that require authentication via bearer tokens or other custom headers.
 The key name `header` is derived from the Python SDK
 [`sse_client()`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/sse.py#L24) argument name.
 
+A simple example showing how to implement MCP SSE server and client with authentication can be found
+in [sse-auth-test-client.py](https://github.com/hideya/langchain-mcp-tools-py-usage/tree/main/src/sse-auth-test-client.py)
+and in [sse-auth-test-server.py](https://github.com/hideya/langchain-mcp-tools-py-usage/tree/main/src/sse-auth-test-server.py)
+of [this usage examples repo](https://github.com/hideya/langchain-mcp-tools-py-usage).
+
 ### Working Directory Configuration for Local MCP Servers
 
 The working directory that is used when spawning a local (stdio) MCP server
