@@ -50,17 +50,17 @@ class McpServerUrlBasedConfig(TypedDict):
     headers: NotRequired[dict[str, str] | None]
 
 
-McpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig
+SingleMcpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig
 
-McpServersConfig = dict[str, McpServerConfig]
+McpServersConfig = dict[str, SingleMcpServerConfig]
 
 
 def fix_schema(schema: dict) -> dict:
     """Converts JSON Schema "type": ["string", "null"] to "anyOf" format.
-    
+
     Args:
         schema: A JSON schema dictionary
-        
+
     Returns:
         Modified schema with converted type formats
     """
@@ -83,7 +83,7 @@ Transport: TypeAlias = tuple[
 
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
-    server_config: McpServerConfig,
+    server_config: SingleMcpServerConfig,
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> Transport:
@@ -335,7 +335,7 @@ McpServerCleanupFn = Callable[[], Awaitable[None]]
 
 
 async def convert_mcp_to_langchain_tools(
-    server_configs: dict[str, McpServerConfig],
+    server_configs: McpServersConfig,
     logger: logging.Logger | None = None
 ) -> tuple[list[BaseTool], McpServerCleanupFn]:
     """Initialize multiple MCP servers and convert their tools to
