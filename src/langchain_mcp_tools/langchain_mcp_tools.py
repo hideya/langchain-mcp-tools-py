@@ -38,6 +38,31 @@ except ImportError as e:
 
 
 class McpServerCommandBasedConfig(TypedDict):
+    """Configuration for an MCP server launched via command line.
+
+    This configuration is used for local MCP servers that are started as child
+    processes using the stdio client. It defines the command to run, optional
+    arguments, environment variables, working directory, and error logging
+    options.
+
+    Attributes:
+        command: The executable command to run (e.g., "npx", "uvx", "python").
+        args: Optional list of command-line arguments to pass to the command.
+        env: Optional dictionary of environment variables to set for the
+                process.
+        cwd: Optional working directory where the command will be executed.
+        errlog: Optional file-like object for redirecting the server's stderr
+                output.
+
+    Example:
+        {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+            "env": {"NODE_ENV": "production"},
+            "cwd": "/path/to/working/directory",
+            "errlog": open("server.log", "w")
+        }
+    """
     command: str
     args: NotRequired[list[str] | None]
     env: NotRequired[dict[str, str] | None]
@@ -46,21 +71,81 @@ class McpServerCommandBasedConfig(TypedDict):
 
 
 class McpServerUrlBasedConfig(TypedDict):
+    """Configuration for a remote MCP server accessed via URL.
+
+    This configuration is used for remote MCP servers that are accessed via
+    HTTP/HTTPS (Server-Sent Events) or WebSocket connections. It defines the
+    URL to connect to and optional HTTP headers for authentication.
+
+    Attributes:
+        url: The URL of the remote MCP server. For SSE servers,
+                use http:// or https:// prefix. For WebSocket servers,
+                use ws:// or wss:// prefix.
+        headers: Optional dictionary of HTTP headers to include in the request,
+                typically used for authentication (e.g., bearer tokens).
+
+    Example for SSE server:
+        {
+            "url": "https://example.com/mcp/sse",
+            "headers": {"Authorization": "Bearer token123"}
+        }
+
+    Example for WebSocket server:
+        {
+            "url": "wss://example.com/mcp/ws"
+        }
+    """
     url: str
     headers: NotRequired[dict[str, str] | None]
 
 
-McpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig
+# Type for a single MCP server configuration, which can be either
+# command-based or URL-based.
+SingleMcpServerConfig = McpServerCommandBasedConfig | McpServerUrlBasedConfig
+"""Configuration for a single MCP server, either command-based or URL-based.
 
-McpServersConfig = dict[str, McpServerConfig]
+This type represents the configuration for a single MCP server, which can
+be either:
+1. A local server launched via command line (McpServerCommandBasedConfig)
+2. A remote server accessed via URL (McpServerUrlBasedConfig)
+
+The type is determined by the presence of either the "command" key
+(for command-based) or the "url" key (for URL-based).
+"""
+
+# Configuration dictionary for multiple MCP servers
+McpServersConfig = dict[str, SingleMcpServerConfig]
+"""Configuration dictionary for multiple MCP servers.
+
+A dictionary mapping server names (as strings) to their respective
+configurations. Each server name acts as a logical identifier used for logging
+and debugging. The configuration for each server can be either command-based
+or URL-based.
+
+Example:
+    {
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+        },
+        "fetch": {
+            "command": "uvx",
+            "args": ["mcp-server-fetch"]
+        },
+        "remote-server": {
+            "url": "https://example.com/mcp/sse",
+            "headers": {"Authorization": "Bearer token123"}
+        }
+    }
+"""
 
 
 def fix_schema(schema: dict) -> dict:
     """Converts JSON Schema "type": ["string", "null"] to "anyOf" format.
-    
+
     Args:
         schema: A JSON schema dictionary
-        
+
     Returns:
         Modified schema with converted type formats
     """
@@ -83,7 +168,7 @@ Transport: TypeAlias = tuple[
 
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
-    server_config: McpServerConfig,
+    server_config: SingleMcpServerConfig,
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> Transport:
@@ -233,15 +318,15 @@ async def get_mcp_server_tools(
 
                 async def _arun(self, **kwargs: Any) -> Any:
                     """Asynchronously executes the tool with given arguments.
-                    
+
                     Logs input/output and handles errors.
-                    
+
                     Args:
                         **kwargs: Arguments to be passed to the MCP tool
-                        
+
                     Returns:
                         Formatted response from the MCP tool as a string
-                        
+
                     Raises:
                         ToolException: If the tool execution fails
                     """
@@ -319,7 +404,7 @@ async def get_mcp_server_tools(
 # A very simple pre-configured logger for fallback
 def init_logger() -> logging.Logger:
     """Creates a simple pre-configured logger.
-    
+
     Returns:
         A configured Logger instance
     """
@@ -332,10 +417,22 @@ def init_logger() -> logging.Logger:
 
 # Type hint for cleanup function
 McpServerCleanupFn = Callable[[], Awaitable[None]]
+"""Type for the async cleanup function returned by
+    convert_mcp_to_langchain_tools.
+
+This represents an asynchronous function that takes no arguments and returns
+nothing. It's used to properly shut down all MCP server connections and clean
+up resources when the tools are no longer needed.
+
+Example usage:
+    tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
+    # Use tools...
+    await cleanup()  # Clean up resources when done
+"""
 
 
 async def convert_mcp_to_langchain_tools(
-    server_configs: dict[str, McpServerConfig],
+    server_configs: McpServersConfig,
     logger: logging.Logger | None = None
 ) -> tuple[list[BaseTool], McpServerCleanupFn]:
     """Initialize multiple MCP servers and convert their tools to
@@ -369,11 +466,11 @@ async def convert_mcp_to_langchain_tools(
                 "command": "npx", "args": ["-y","@h1deya/mcp-server-weather"]
             }
         }
-        
+
         tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
-        
+
         # Use tools...
-        
+
         await cleanup()
     """
 

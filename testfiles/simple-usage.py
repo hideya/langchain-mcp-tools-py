@@ -83,24 +83,24 @@ async def run() -> None:
         # If you are interested in MCP server's stderr redirection,
         # uncomment the following code snippets.
 
-        # # Set a file-like object to which MCP server's stderr is redirected
-        # # NOTE: Why the key name `errlog` for `server_config` was chosen:
-        # # Unlike TypeScript SDK's `StdioServerParameters`, the Python
-        # # SDK's `StdioServerParameters` doesn't include `stderr: int`.
-        # # Instead, it calls `stdio_client()` with a separate argument
-        # # `errlog: TextIO`.  I once included `stderr: int` for
-        # # compatibility with the TypeScript version, but decided to
-        # # follow the Python SDK more closely.
-        # log_file_exit_stack = ExitStack()
-        # for server_name in mcp_servers:
-        #     server_config = mcp_servers[server_name]
-        #     # Skip URL-based servers (no command)
-        #     if "command" not in server_config:
-        #         continue
-        #     log_path = f"mcp-server-{server_name}.log"
-        #     log_file = open(log_path, "w")
-        #     server_config["errlog"] = log_file
-        #     log_file_exit_stack.callback(log_file.close)
+        # Set a file-like object to which MCP server's stderr is redirected
+        # NOTE: Why the key name `errlog` for `server_config` was chosen:
+        # Unlike TypeScript SDK's `StdioServerParameters`, the Python
+        # SDK's `StdioServerParameters` doesn't include `stderr: int`.
+        # Instead, it calls `stdio_client()` with a separate argument
+        # `errlog: TextIO`.  I once included `stderr: int` for
+        # compatibility with the TypeScript version, but decided to
+        # follow the Python SDK more closely.
+        log_file_exit_stack = ExitStack()
+        for server_name in mcp_servers:
+            server_config = mcp_servers[server_name]
+            # Skip URL-based servers (no command)
+            if "command" not in server_config:
+                continue
+            log_path = f"mcp-server-{server_name}.log"
+            log_file = open(log_path, "w")
+            server_config["errlog"] = log_file
+            log_file_exit_stack.callback(log_file.close)
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
             mcp_servers,

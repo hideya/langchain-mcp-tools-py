@@ -61,7 +61,7 @@ run-sse-auth-test-server: install
 sphinx: install
 	make -C docs clean html
 
-gh-pages: sphinx
+deploy-docs: sphinx
 	ghp-import -n -p -f docs/_build/html
 
 clean:

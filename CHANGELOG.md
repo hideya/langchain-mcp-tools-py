@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Make SingleMcpServerConfig public (it used to be McpServerConfig)
+- Improve documentations
+
+
+## [0.2.3] - 2025-04-22
+
 ### Added
 - Add test files for SSE connection with authentication
 - Add Sphinx documentation with Google-style docstrings
