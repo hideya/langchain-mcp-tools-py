@@ -70,14 +70,14 @@ async def run() -> None:
             #         "@h1deya/mcp-server-weather"
             #     ]
             # },
-            "weather": {
-                "url": f"http://localhost:{sse_server_port}/sse",
-                # only tests syntax, not functionality
-                "headers": {"Authorization": f"Bearer {bearer_token}"}
-            },
             # "weather": {
-            #     "url": f"ws://localhost:{ws_server_port}/message"
+            #     "url": f"http://localhost:{sse_server_port}/sse",
+            #     # only tests syntax, not functionality
+            #     "headers": {"Authorization": f"Bearer {bearer_token}"}
             # },
+            "weather": {
+                "url": f"ws://localhost:{ws_server_port}/message"
+            },
         }
 
         # If you are interested in MCP server's stderr redirection,
