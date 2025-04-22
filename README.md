@@ -42,6 +42,11 @@ A typescript equivalent of this utility is available
 pip install langchain-mcp-tools
 ```
 
+## API docs
+
+Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
+
+
 ## Quick Start
 
 A minimal but complete working usage example can be found
