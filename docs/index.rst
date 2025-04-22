@@ -1,15 +1,16 @@
-.. langchain-mcp-tools-py documentation master file, created by
-   sphinx-quickstart on Mon Apr 21 16:57:53 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. langchain-mcp-tools-py documentation master file
 
-langchain-mcp-tools-py documentation
-====================================
+langchain-mcp-tools-py
+======================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+A Python library to connect LangChain tools with MCP (Machine Chat Protocol) servers.
 
+Main Features
+-------------
+
+* Convert MCP servers to LangChain tools
+* Support for command-based and URL-based MCP servers
+* Clean management of server lifecycles
 
 .. toctree::
    :maxdepth: 2

@@ -1,7 +1,8 @@
 # NOTES: 
 # - The command lines (recipe lines) must start with a TAB character.
 # - Each command line runs in a separate shell without .ONESHELL:
-.PHONY: clean install build check-pkg prep-publish test-publish publish test run-example
+.PHONY: clean install build check-pkg prep-publish test-publish publish \
+		test run-example sphinx gh-pages
 .ONESHELL:
 
 .venv:
@@ -56,6 +57,12 @@ run-sse-auth-test-client: install
 run-sse-auth-test-server: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/sse-auth-test-server.py
+
+sphinx: install
+	make -C docs clean html
+
+gh-pages: sphinx
+	ghp-import -n -p -f docs/_build/html
 
 clean:
 	git clean -fdxn -e .env
