@@ -1,5 +1,15 @@
 # MCP To LangChain Tools Conversion Utility [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/)
 
+## NOTE
+
+LangChain's official **LangChain MCP Adapters** library has been released at:
+- pypi: https://pypi.org/project/langchain-mcp-adapters/
+- github: https://github.com/langchain-ai/langchain-mcp-adapters
+
+You may want to consider using the above if you don't have specific needs for using this library...
+
+## Introduction
+
 This package is intended to simplify the use of
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server tools with LangChain / Python.
