@@ -107,12 +107,8 @@ async def run() -> None:
             # init_logger()
         )
 
-        llm = init_chat_model(
-            # model="claude-3-7-sonnet-latest",
-            # model_provider="anthropic"
-            model="o3-mini",
-            model_provider="openai"
-        )
+        # llm = init_chat_model("anthropic:claude-3-7-sonnet-latest")
+        llm = init_chat_model("openai:o3-mini")
 
         agent = create_react_agent(
             llm,

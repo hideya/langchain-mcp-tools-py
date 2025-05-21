@@ -97,10 +97,7 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model(
-    model="claude-3-7-sonnet-latest",
-    model_provider="anthropic"
-)
+llm = init_chat_model("anthropic:claude-3-7-sonnet-latest")
 
 # from langgraph.prebuilt import create_react_agent
 agent = create_react_agent(
