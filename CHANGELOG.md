@@ -8,30 +8,41 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
-- **Streamable HTTP Transport Support**: Added support for the new Streamable HTTP transport (recommended for production)
+- **MCP Spec-Compliant Streamable HTTP Support**: Full implementation of MCP 2025-03-26 backwards compatibility guidelines
+- Auto-detection transport logic: Try Streamable HTTP first, fallback to SSE on 4xx errors (per official MCP specification)
 - Transport identifier `"streamable_http"` to align with TypeScript version
-- Deprecation warnings for legacy SSE transport
-- Enhanced logging to show transport selection and deprecation notices
-- Comprehensive documentation for Streamable HTTP migration
-- Example code demonstrating different transport configurations
+- Connection-level fallback testing (not just transport creation)
+- Enhanced 4xx error detection for proper fallback behavior
+- Comprehensive logging to show transport selection and fallback reasoning
+- Detailed documentation for MCP specification compliance
+- Example code demonstrating MCP spec-compliant configuration patterns
 
 ### Changed
-- **BREAKING**: HTTP/HTTPS URLs now default to `streamable_http` transport instead of `sse`
+- **BREAKING**: HTTP/HTTPS URLs now use MCP spec auto-detection instead of defaulting to any single transport
 - **BREAKING**: Transport identifier changed from `"streamable-http"` to `"streamable_http"` (underscore) for TypeScript alignment
-- Prioritized Streamable HTTP over SSE in transport selection logic
-- Enhanced error messages to reflect new transport priorities
-- Updated documentation to emphasize Streamable HTTP as the recommended transport
-- Added deprecation warnings for SSE transport usage
+- Implemented proper connection-level fallback per MCP specification backwards compatibility guidelines
+- Enhanced error classification to properly detect 4xx errors that should trigger fallback
+- Updated all documentation to emphasize MCP specification compliance
+- Improved logging to show detailed transport selection reasoning
+- Added deprecation warnings for explicit SSE usage
 
 ### Deprecated
-- SSE transport is now deprecated in favor of Streamable HTTP
-- Users will see warnings when using `transport: "sse"`
+- Explicit SSE transport usage is now deprecated in favor of auto-detection or Streamable HTTP
+- Users will see warnings when using `transport: "sse"` with guidance to migrate
 
 ### Migration Guide
-- Remove explicit `transport: "sse"` from configurations to use the new `streamable_http` default
-- Update server endpoints to support Streamable HTTP transport
-- Monitor logs for deprecation warnings and plan SSE phase-out
+- **Recommended**: Remove explicit `transport` settings to enable MCP spec auto-detection
+- **For modern servers**: Optionally use `transport: "streamable_http"` for explicit Streamable HTTP
+- **For legacy servers**: Keep `transport: "sse"` only if server doesn't support Streamable HTTP
+- Monitor logs for auto-detection behavior and deprecation warnings
 - See `docs/streamable-http-support.md` for detailed migration instructions
+
+### Technical Implementation
+- Follows MCP 2025-03-26 specification backwards compatibility exactly
+- Aligns with TypeScript langchain-mcp-tools implementation
+- Proper 4xx error detection triggers SSE fallback as per spec
+- Connection-level testing ensures real compatibility detection
+- Non-4xx errors (network issues) are properly re-thrown
 
 ### Fixed
 - Update dependencies
