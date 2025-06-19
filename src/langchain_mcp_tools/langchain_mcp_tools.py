@@ -28,6 +28,7 @@ try:
     from mcp import ClientSession
     from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client, StdioServerParameters
+    from mcp.client.streamable_http import streamablehttp_client
     from mcp.client.websocket import websocket_client
     from mcp.shared._httpx_utils import McpHttpClientFactory
     import mcp.types as mcp_types
