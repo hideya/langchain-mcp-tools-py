@@ -43,8 +43,8 @@ async def run() -> None:
     sse_server_process, sse_server_port = start_remote_mcp_server_locally(
         "SSE", "npx -y @h1deya/mcp-server-weather")
 
-    ws_server_process, ws_server_port = start_remote_mcp_server_locally(
-        "WS", "npx -y @h1deya/mcp-server-weather")
+    # ws_server_process, ws_server_port = start_remote_mcp_server_locally(
+    #     "WS", "npx -y @h1deya/mcp-server-weather")
 
     try:
         mcp_servers: McpServersConfig = {
