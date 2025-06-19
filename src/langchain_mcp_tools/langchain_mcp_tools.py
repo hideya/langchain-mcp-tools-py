@@ -211,22 +211,22 @@ Transport: TypeAlias = tuple[
 
 
 def is_4xx_error(error: Exception) -> bool:
-    """Determines if an error represents a 4xx HTTP status code.
+    """Determines if an error represents a 4xx HTTP status code or equivalent.
     
     Used to decide whether to fall back from Streamable HTTP to SSE transport
-    per MCP specification.
+    per MCP specification. Also handles MCP protocol errors that indicate
+    4xx-like conditions.
     
     Args:
         error: The error to check
         
     Returns:
-        true if the error represents a 4xx HTTP status
+        true if the error represents a 4xx HTTP status or equivalent
     """
     if not error:
         return False
     
-    # Check for common error patterns that indicate 4xx responses
-    error_str = str(error)
+    error_str = str(error).lower()
     
     # Check for explicit HTTP status codes
     if hasattr(error, 'status') and isinstance(error.status, int):
@@ -236,16 +236,25 @@ def is_4xx_error(error: Exception) -> bool:
     if hasattr(error, 'response') and hasattr(error.response, 'status_code'):
         return 400 <= error.response.status_code < 500
     
+    # Check for MCP protocol errors that indicate 4xx-like conditions
+    if 'session terminated' in error_str:
+        return True  # Often indicates server rejected the connection
+    
+    if 'method not found' in error_str or 'method not allowed' in error_str:
+        return True  # Equivalent to 405 Method Not Allowed
+        
+    if 'not found' in error_str and '404' in error_str:
+        return True  # Explicit 404
+    
     # Check for error messages that typically indicate 4xx errors
     return (
         '4' in error_str and any(code in error_str for code in ['400', '401', '402', '403', '404', '405', '406', '407', '408', '409']) or
-        'Bad Request' in error_str or
-        'Unauthorized' in error_str or
-        'Forbidden' in error_str or
-        'Not Found' in error_str or
-        'Method Not Allowed' in error_str
+        'bad request' in error_str or
+        'unauthorized' in error_str or
+        'forbidden' in error_str or
+        'not found' in error_str or
+        'method not allowed' in error_str
     )
-
 
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
@@ -455,7 +464,13 @@ async def get_mcp_server_tools(
         Exception: If tool conversion fails
     """
     try:
-        read, write = transport
+        # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
+        if len(transport) == 2:
+            read, write = transport
+        elif len(transport) == 3:
+            read, write, _ = transport  # Third element is session info/metadata
+        else:
+            raise ValueError(f"Unexpected transport tuple length: {len(transport)}")
 
         # Use an intermediate `asynccontextmanager` to log the cleanup message
         @asynccontextmanager

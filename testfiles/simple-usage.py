@@ -75,7 +75,7 @@ async def run() -> None:
 
             "weather": {
                 "url": f"http://localhost:{sse_server_port}/sse",
-                "transport": "sse",
+                # "transport": "sse",
                 # only tests syntax, not functionality
                 "headers": {"Authorization": f"Bearer {bearer_token}"}
             },
