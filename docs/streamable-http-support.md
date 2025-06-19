@@ -1,84 +1,91 @@
-# Streamable HTTP Transport Support
+# Streamable HTTP Transport Support with MCP Spec Compliance
 
-This document describes the Streamable HTTP transport support in langchain-mcp-tools.
+This document describes the Streamable HTTP transport support in langchain-mcp-tools, implementing the MCP specification's backwards compatibility recommendations.
 
 ## Overview
 
-The Streamable HTTP transport is the **recommended MCP transport** that supersedes SSE (Server-Sent Events) for production deployments. It provides better scalability, resumability, and performance for multi-node deployments.
+The Streamable HTTP transport is the **recommended MCP transport** that supersedes SSE (Server-Sent Events). Per the **MCP 2025-03-26 specification**, clients should attempt Streamable HTTP first, then fallback to SSE on 4xx errors for maximum compatibility.
 
 **Key Points:**
-- **Default Transport**: Streamable HTTP is now the default for HTTP/HTTPS URLs
+- **Auto-Detection**: HTTP URLs automatically try Streamable HTTP first, fallback to SSE on 4xx errors
+- **MCP Spec Compliance**: Implements the official backwards compatibility guidelines
 - **Alignment**: Uses `"streamable_http"` identifier to align with TypeScript version
-- **Deprecation**: SSE transport is deprecated and will show warnings
+- **Deprecation**: SSE transport shows warnings to encourage migration
 
-## Key Changes Made
+## MCP Specification Implementation
 
-### 1. Enhanced URL-based Configuration
+This implementation follows the [MCP 2025-03-26 specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#backwards-compatibility) exactly:
 
-The `McpServerUrlBasedConfig` now supports an explicit `transport` field with Streamable HTTP as the default:
+### Backwards Compatibility Logic
 
-```python
-class McpServerUrlBasedConfig(TypedDict):
-    url: str
-    transport: NotRequired[str]  # "streamable_http", "sse", "websocket"
-    headers: NotRequired[dict[str, str] | None]
-    timeout: NotRequired[float]
-    # ... other fields
+```
+Clients wanting to support older servers should:
+- Accept an MCP server URL from the user, which may point to either a server using the old transport or the new transport.
+- Attempt to POST an InitializeRequest to the server URL, with an Accept header as defined above:
+  - If it succeeds, the client can assume this is a server supporting the new Streamable HTTP transport.
+  - If it fails with an HTTP 4xx status code (e.g., 405 Method Not Allowed or 404 Not Found):
+    - Issue a GET request to the server URL, expecting that this will open an SSE stream and return an endpoint event as the first event.
 ```
 
-### 2. Updated Transport Selection Logic
+### Implementation Details
 
-The `spawn_mcp_server_and_get_transport()` function now:
+1. **Auto-Detection (Default)**: For HTTP/HTTPS URLs without explicit transport
+   - Try Streamable HTTP connection first
+   - On 4xx errors → fallback to SSE
+   - Non-4xx errors → re-thrown (network issues, etc.)
 
-- **Prioritizes Streamable HTTP**: Default transport for HTTP/HTTPS URLs
-- **Explicit transport selection**: Uses the `transport` field when specified
-- **Deprecation warnings**: Shows warnings when using legacy SSE transport
-- **Better error handling**: Provides clear error messages for unsupported transports
+2. **Explicit Transport**: When `transport` is specified
+   - `"streamable_http"` → use Streamable HTTP only
+   - `"sse"` → use SSE only (shows deprecation warning)
+   - `"websocket"` → use WebSocket
 
-### 3. Transport Priority (Updated)
-
-1. **Streamable HTTP (Default)**: Default for `http://`/`https://` URLs
-2. **Explicit transport**: If `transport` field is specified, use that transport
-3. **Legacy SSE**: Only when explicitly specified with `transport: "sse"`
-4. **WebSocket**: For `ws://`/`wss://` URLs or explicit `transport: "websocket"`
+3. **Error Classification**: 4xx errors include:
+   - 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
+   - 405 Method Not Allowed, and other 4xx status codes
 
 ## Configuration Examples
 
-### Streamable HTTP Server (Recommended, Default for HTTP)
+### Auto-Detection (Recommended, MCP Spec Compliant)
 
 ```python
 server_configs = {
-    "production-api": {
+    "modern-api": {
         "url": "https://api.example.com/mcp",
-        "transport": "streamable_http",  # Optional: this is now the default
-        "headers": {"Authorization": "Bearer token123"},
-        "timeout": 60.0
-    }
-}
-
-# Or simply (streamable_http is now the default):
-server_configs = {
-    "production-api": {
-        "url": "https://api.example.com/mcp",
+        # No transport specified - auto-detects per MCP spec:
+        # 1. Try Streamable HTTP first
+        # 2. Fallback to SSE on 4xx errors
         "headers": {"Authorization": "Bearer token123"},
         "timeout": 60.0
     }
 }
 ```
 
-### Legacy SSE Server (Deprecated)
+### Explicit Streamable HTTP (No Fallback)
+
+```python
+server_configs = {
+    "streamable-only": {
+        "url": "https://api.example.com/mcp",
+        "transport": "streamable_http",  # Explicit, no fallback
+        "headers": {"Authorization": "Bearer token123"},
+        "timeout": 60.0
+    }
+}
+```
+
+### Explicit SSE (Legacy, Deprecated)
 
 ```python
 server_configs = {
     "legacy-api": {
         "url": "https://api.example.com/mcp/sse",
-        "transport": "sse",  # Must be explicit now
+        "transport": "sse",  # Explicit, shows deprecation warning
         "headers": {"Authorization": "Bearer token123"}
     }
 }
 ```
 
-### Mixed Configuration
+### Mixed Configuration (Real-World Scenario)
 
 ```python
 server_configs = {
@@ -86,154 +93,187 @@ server_configs = {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     },
-    "remote-streamable": {
+    "modern-api": {
         "url": "https://api.example.com/mcp",
-        # transport defaults to "streamable_http" for http/https URLs
-        "headers": {"Authorization": "Bearer token123"},
-        "timeout": 60.0
+        # Auto-detection: tries Streamable HTTP → SSE fallback
+        "headers": {"Authorization": "Bearer token123"}
     },
-    "legacy-sse": {
-        "url": "https://legacy.example.com/mcp/sse",
-        "transport": "sse",  # Explicit for legacy servers
+    "legacy-partner": {
+        "url": "https://partner.example.com/mcp/sse",
+        "transport": "sse",  # Explicit for known legacy server
+        "headers": {"Authorization": "Bearer partner_token"}
     },
     "websocket-server": {
-        "url": "wss://ws.example.com/mcp",
+        "url": "wss://realtime.example.com/mcp",
         "transport": "websocket"
     }
 }
 ```
 
+## Benefits of This Implementation
+
+### 1. **Maximum Compatibility**
+- Works with modern Streamable HTTP servers
+- Automatically falls back to legacy SSE servers
+- No configuration changes needed for most users
+
+### 2. **MCP Spec Compliance**
+- Follows official MCP 2025-03-26 backwards compatibility guidelines
+- Aligns with reference implementations
+- Future-proof as the standard evolves
+
+### 3. **Graceful Migration Path**
+- Existing SSE servers continue to work via auto-fallback
+- New servers get Streamable HTTP benefits automatically
+- Clear deprecation warnings guide migration
+
+### 4. **TypeScript Alignment**
+- Same behavior as TypeScript langchain-mcp-tools
+- Consistent `"streamable_http"` identifier
+- Matching error handling and fallback logic
+
+## Logging and Debugging
+
+The implementation provides detailed logging to understand the transport selection:
+
+```
+[INFO] MCP server "modern-api": trying Streamable HTTP to https://api.example.com/mcp
+[INFO] MCP server "modern-api": successfully connected using Streamable HTTP
+
+[INFO] MCP server "legacy-api": trying Streamable HTTP to https://legacy.example.com/mcp
+[INFO] MCP server "legacy-api": Streamable HTTP failed with 4xx error, falling back to SSE
+[WARNING] MCP server "legacy-api": Using SSE fallback (deprecated), server should support Streamable HTTP
+[INFO] MCP server "legacy-api": successfully connected using SSE fallback
+
+[INFO] MCP server "explicit-sse": connecting via SSE (explicit) to https://old.example.com/mcp/sse
+[WARNING] MCP server "explicit-sse": SSE transport is deprecated, consider migrating to streamable_http
+```
+
 ## Migration Guide
 
-### From SSE to Streamable HTTP
+### For Users
 
-1. **Remove explicit SSE transport** (if you want to use the new default):
-   ```python
-   # Old SSE configuration (explicit)
-   config = {
-       "url": "https://api.example.com/mcp/sse",
-       "transport": "sse",
-       "headers": {"Authorization": "Bearer token"}
-   }
-   
-   # New Streamable HTTP configuration (default)
-   config = {
-       "url": "https://api.example.com/mcp",
-       # No need to specify transport - streamable_http is default
-       "headers": {"Authorization": "Bearer token"},
-       "timeout": 60.0  # Optional: customize timeout
-   }
-   ```
+1. **No Action Required**: Auto-detection works with both new and old servers
+2. **Remove Explicit SSE**: Remove `"transport": "sse"` to enable auto-detection
+3. **Monitor Warnings**: Watch for deprecation warnings in logs
 
-2. **Update server endpoints**: Ensure your server supports Streamable HTTP on the specified URL
+### For Server Developers
 
-3. **Test the connection**: The library will log which transport is being used and show deprecation warnings for SSE
-
-### Alignment with TypeScript Version
-
-This Python implementation now aligns with the TypeScript version:
-- Uses `"streamable_http"` instead of `"streamable-http"`
-- Prioritizes Streamable HTTP as the default for HTTP/HTTPS URLs
-- Maintains the same configuration patterns and behavior
-
-## Benefits of Streamable HTTP
-
-1. **Better Scalability**: Designed for multi-node deployments
-2. **Resumability**: Supports event stores for resumable connections
-3. **Performance**: More efficient than SSE for high-throughput scenarios
-4. **Flexibility**: Supports both JSON and SSE response formats
-5. **Future-Proof**: This is the recommended transport going forward
-
-## Backward Compatibility
-
-- Existing SSE configurations continue to work when explicitly specified
-- Deprecation warnings will be shown for SSE usage to encourage migration
-- WebSocket transport remains unchanged
-- Local stdio servers (command-based) are unaffected
+1. **Add Streamable HTTP Support**: Implement MCP 2025-03-26 Streamable HTTP transport
+2. **Maintain SSE Compatibility**: Keep SSE for backwards compatibility during transition
+3. **Return Proper 4xx Errors**: Ensure unsupported methods return 405 Method Not Allowed
 
 ## Error Handling
 
-The updated code provides better error messages for unsupported transports:
+### 4xx Errors (Trigger Fallback)
+- 400 Bad Request → fallback to SSE
+- 404 Not Found → fallback to SSE  
+- 405 Method Not Allowed → fallback to SSE
+- Other 4xx status codes → fallback to SSE
+
+### Non-4xx Errors (No Fallback)
+- Network connectivity issues → re-thrown
+- 5xx server errors → re-thrown
+- Timeout errors → re-thrown
+- DNS resolution failures → re-thrown
+
+## Testing the Implementation
+
+### Test Auto-Detection
 
 ```python
-ValueError: Unsupported transport "invalid-transport" or URL scheme "http" for server "my-server". 
-Supported transports: "streamable_http" (recommended), "sse" (deprecated), "websocket". 
-Supported URL schemes: http/https (for streamable_http/sse), ws/wss (for websocket).
+# This will try Streamable HTTP first, fallback to SSE on 4xx
+config = {
+    "test-server": {
+        "url": "https://your-server.com/mcp",
+        "headers": {"Authorization": "Bearer test_token"}
+    }
+}
+
+tools, cleanup = await convert_mcp_to_langchain_tools(config)
+# Check logs to see which transport was used
 ```
 
-## Logging
+### Test Explicit Transports
 
-The enhanced logging shows which transport is being used and deprecation warnings:
+```python
+# Force Streamable HTTP (no fallback)
+config_streamable = {
+    "test-server": {
+        "url": "https://your-server.com/mcp", 
+        "transport": "streamable_http"
+    }
+}
 
+# Force SSE (with deprecation warning)
+config_sse = {
+    "test-server": {
+        "url": "https://your-server.com/mcp/sse",
+        "transport": "sse"
+    }
+}
 ```
-[INFO] MCP server "my-server": connecting via Streamable HTTP to https://api.example.com/mcp
-[INFO] MCP server "legacy-server": connecting via SSE (legacy) to https://legacy.example.com/mcp/sse
-[WARNING] MCP server "legacy-server": SSE transport is deprecated, consider migrating to streamable_http
-[INFO] MCP server "ws-server": connecting via WebSocket to wss://ws.example.com/mcp
-[INFO] MCP server "local-server": spawning local process via stdio
+
+## Comparison with TypeScript Version
+
+| Feature | Python Implementation | TypeScript Implementation | Status |
+|---------|----------------------|---------------------------|--------|
+| Auto-detection | ✅ Streamable HTTP → SSE fallback | ✅ Streamable HTTP → SSE fallback | ✅ Aligned |
+| 4xx Error Detection | ✅ Multiple patterns | ✅ Multiple patterns | ✅ Aligned |
+| Transport Keywords | ✅ `streamable_http` | ✅ `streamable_http` | ✅ Aligned |
+| Deprecation Warnings | ✅ SSE shows warnings | ✅ SSE shows warnings | ✅ Aligned |
+| Connection-Level Fallback | ✅ Full connection test | ✅ Full connection test | ✅ Aligned |
+| Logging Detail | ✅ Detailed transport logs | ✅ Detailed transport logs | ✅ Aligned |
+
+## Advanced Configuration
+
+### Custom Timeout for Fallback
+
+```python
+config = {
+    "slow-server": {
+        "url": "https://slow.example.com/mcp",
+        "timeout": 120.0,  # Longer timeout for slow servers
+        "headers": {"Authorization": "Bearer token"}
+    }
+}
 ```
 
-## Testing
+### Authentication with Both Transports
 
-To test the Streamable HTTP support:
-
-1. **Set up a test server** that supports Streamable HTTP
-2. **Configure the client** with or without `transport: "streamable_http"` (it's now the default)
-3. **Check the logs** to confirm the correct transport is being used
-4. **Verify tool functionality** works as expected
-5. **Test deprecation warnings** by explicitly using `transport: "sse"`
+```python
+config = {
+    "auth-server": {
+        "url": "https://secure.example.com/mcp",
+        "headers": {
+            "Authorization": "Bearer token123",
+            "X-API-Key": "key456"
+        }
+    }
+}
+# Headers will be used for both Streamable HTTP attempt and SSE fallback
+```
 
 ## Future Considerations
 
-- Monitor MCP specification updates for new transport features
-- Consider adding authentication support for Streamable HTTP
-- Evaluate performance improvements over SSE in your use case
-- Plan migration timeline from SSE to Streamable HTTP for production systems
-- Keep alignment with TypeScript version for consistent behavior across implementations
-
-## Transport Comparison
-
-| Transport | Status | Use Case | Performance | Scalability |
-|-----------|--------|----------|-------------|-------------|
-| `streamable_http` | **Recommended** | Production deployments | High | Excellent |
-| `sse` | Deprecated | Legacy systems only | Medium | Limited |
-| `websocket` | Supported | Real-time applications | High | Good |
-| `stdio` | Supported | Local development | High | N/A |
-
-## Breaking Changes
-
-### Version 2.0+ Changes
-
-1. **Default Transport Change**: HTTP/HTTPS URLs now default to `streamable_http` instead of `sse`
-2. **Transport Identifier**: Uses `"streamable_http"` (with underscore) to align with TypeScript version
-3. **Deprecation Warnings**: SSE usage now shows deprecation warnings
-4. **Error Messages**: Updated to reflect new transport priorities
-
-### Migration Checklist
-
-- [ ] Update server endpoints to support Streamable HTTP
-- [ ] Test existing configurations with new defaults
-- [ ] Address any deprecation warnings in logs
-- [ ] Update documentation and configuration examples
-- [ ] Plan phaseout of SSE transport usage
+1. **Server Migration Tracking**: Monitor logs to identify servers needing Streamable HTTP support
+2. **Performance Analysis**: Compare Streamable HTTP vs SSE performance in your environment  
+3. **Spec Updates**: Stay current with MCP specification updates
+4. **Deprecation Timeline**: Plan for eventual SSE removal based on server ecosystem migration
 
 ## Troubleshooting
 
-### Common Issues
+### Issue: No Fallback Occurring
+- **Check**: Server returns proper 4xx status codes for unsupported methods
+- **Verify**: URL is correct for both Streamable HTTP and SSE attempts
+- **Test**: Try explicit transports to isolate the issue
 
-1. **Server doesn't support Streamable HTTP**:
-   - Explicitly set `transport: "sse"` for legacy servers
-   - Check server documentation for supported transports
+### Issue: Unexpected Transport Used
+- **Review**: Logs show detailed transport selection reasoning
+- **Verify**: Configuration doesn't have conflicting settings
+- **Test**: Use explicit `transport` field to override auto-detection
 
-2. **Connection failures**:
-   - Verify the server URL and endpoint
-   - Check authentication headers and tokens
-   - Review server logs for errors
-
-3. **Performance issues**:
-   - Adjust `timeout` settings for slow connections
-   - Monitor network latency and server response times
-
-4. **Deprecation warnings**:
-   - Plan migration from SSE to Streamable HTTP
-   - Update server infrastructure to support Streamable HTTP
+### Issue: Authentication Failures
+- **Check**: Headers are properly configured for both transport types
+- **Verify**: Server accepts same authentication for both transports
+- **Test**: Try explicit transports with authentication separately

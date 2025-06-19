@@ -80,16 +80,16 @@ class McpServerUrlBasedConfig(TypedDict):
     HTTP/HTTPS (Streamable HTTP, Server-Sent Events) or WebSocket connections.
     It defines the URL to connect to and optional HTTP headers for authentication.
 
-    Note: Streamable HTTP is the recommended transport for production deployments
-    as it supersedes SSE (Server-Sent Events).
+    Note: Per MCP spec, clients should try Streamable HTTP first, then fallback 
+    to SSE on 4xx errors for maximum compatibility.
 
     Attributes:
         url: The URL of the remote MCP server. For HTTP/HTTPS servers,
                 use http:// or https:// prefix. For WebSocket servers,
                 use ws:// or wss:// prefix.
         transport: Optional transport type. Supported values:
-                "streamable_http" (recommended, default for http/https), 
-                "sse" (legacy), "websocket"
+                "streamable_http" (recommended, attempted first), 
+                "sse" (legacy, fallback), "websocket"
         headers: Optional dictionary of HTTP headers to include in the request,
                 typically used for authentication (e.g., bearer tokens).
         timeout: Optional timeout for HTTP requests (default: 30.0 seconds).
@@ -98,7 +98,15 @@ class McpServerUrlBasedConfig(TypedDict):
         httpx_client_factory: Optional factory for creating HTTP clients.
         auth: Optional httpx authentication for requests.
 
-    Example for Streamable HTTP server (recommended):
+    Example for auto-detection (recommended):
+        {
+            "url": "https://api.example.com/mcp",
+            # Auto-tries Streamable HTTP first, falls back to SSE on 4xx
+            "headers": {"Authorization": "Bearer token123"},
+            "timeout": 60.0
+        }
+
+    Example for explicit Streamable HTTP:
         {
             "url": "https://api.example.com/mcp",
             "transport": "streamable_http",
@@ -106,14 +114,14 @@ class McpServerUrlBasedConfig(TypedDict):
             "timeout": 60.0
         }
 
-    Example for legacy SSE server:
+    Example for explicit SSE (legacy):
         {
             "url": "https://example.com/mcp/sse",
             "transport": "sse",
             "headers": {"Authorization": "Bearer token123"}
         }
 
-    Example for WebSocket server:
+    Example for WebSocket:
         {
             "url": "wss://example.com/mcp/ws",
             "transport": "websocket"
@@ -161,14 +169,14 @@ Example:
             "command": "uvx",
             "args": ["mcp-server-fetch"]
         },
-        "remote-streamable-server": {
+        "auto-detection-server": {
             "url": "https://api.example.com/mcp",
-            "transport": "streamable_http",
+            # Will try Streamable HTTP first, fallback to SSE on 4xx
             "headers": {"Authorization": "Bearer token123"},
             "timeout": 60.0
         },
-        "remote-sse-server": {
-            "url": "https://example.com/mcp/sse",
+        "explicit-sse-server": {
+            "url": "https://legacy.example.com/mcp/sse",
             "transport": "sse",
             "headers": {"Authorization": "Bearer token123"}
         }
@@ -202,6 +210,43 @@ Transport: TypeAlias = tuple[
 ]
 
 
+def is_4xx_error(error: Exception) -> bool:
+    """Determines if an error represents a 4xx HTTP status code.
+    
+    Used to decide whether to fall back from Streamable HTTP to SSE transport
+    per MCP specification.
+    
+    Args:
+        error: The error to check
+        
+    Returns:
+        true if the error represents a 4xx HTTP status
+    """
+    if not error:
+        return False
+    
+    # Check for common error patterns that indicate 4xx responses
+    error_str = str(error)
+    
+    # Check for explicit HTTP status codes
+    if hasattr(error, 'status') and isinstance(error.status, int):
+        return 400 <= error.status < 500
+    
+    # Check for httpx response errors
+    if hasattr(error, 'response') and hasattr(error.response, 'status_code'):
+        return 400 <= error.response.status_code < 500
+    
+    # Check for error messages that typically indicate 4xx errors
+    return (
+        '4' in error_str and any(code in error_str for code in ['400', '401', '402', '403', '404', '405', '406', '407', '408', '409']) or
+        'Bad Request' in error_str or
+        'Unauthorized' in error_str or
+        'Forbidden' in error_str or
+        'Not Found' in error_str or
+        'Method Not Allowed' in error_str
+    )
+
+
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
     server_config: SingleMcpServerConfig,
@@ -210,14 +255,15 @@ async def spawn_mcp_server_and_get_transport(
 ) -> Transport:
     """Spawns an MCP server process and establishes communication channels.
 
-    This function supports multiple transport types:
-    - stdio: For local command-based servers
-    - streamable_http: For Streamable HTTP servers (recommended for production)
-    - sse: For Server-Sent Events HTTP servers (legacy, deprecated)
-    - websocket: For WebSocket servers
+    This function implements the MCP specification's backwards compatibility
+    recommendation: for HTTP URLs, try Streamable HTTP first, then fallback to
+    SSE on 4xx errors.
 
-    Note: Streamable HTTP is the recommended transport for production deployments
-    as it supersedes SSE and provides better scalability and performance.
+    Supports multiple transport types:
+    - stdio: For local command-based servers
+    - streamable_http: For Streamable HTTP servers (tried first for HTTP URLs)
+    - sse: For Server-Sent Events HTTP servers (fallback for HTTP URLs)
+    - websocket: For WebSocket servers
 
     Args:
         server_name: Server instance name to use for better logging
@@ -248,37 +294,83 @@ async def spawn_mcp_server_and_get_transport(
             timeout = url_config.get("timeout", 30.0)
             auth = url_config.get("auth", None)
             
-            # Determine transport type - prioritize Streamable HTTP
-            if transport_type == "streamable_http" or (transport_type == "" and url_scheme in ("http", "https")):
-                # Streamable HTTP transport (recommended, default for http/https)
-                logger.info(f'MCP server "{server_name}": '
-                           f"connecting via Streamable HTTP to {url_str}")
+            if url_scheme in ("http", "https"):
+                # HTTP/HTTPS: Apply MCP spec backwards compatibility logic
                 
-                # Prepare kwargs for streamablehttp_client
-                kwargs = {}
-                if headers is not None:
-                    kwargs["headers"] = headers
-                if timeout != 30.0:  # Only pass if different from default
-                    kwargs["timeout"] = timeout
-                if auth is not None:
-                    kwargs["auth"] = auth
-                
-                transport = await exit_stack.enter_async_context(
-                    streamablehttp_client(url_str, **kwargs)
-                )
-                
-            elif transport_type == "sse":
-                # SSE transport (legacy, deprecated)
-                logger.info(f'MCP server "{server_name}": '
-                           f"connecting via SSE (legacy) to {url_str}")
-                logger.warning(f'MCP server "{server_name}": '
-                              f"SSE transport is deprecated, consider migrating to streamable_http")
-                
-                transport = await exit_stack.enter_async_context(
-                    sse_client(url_str, headers=headers)
-                )
-                
-            elif transport_type == "websocket" or url_scheme in ("ws", "wss"):
+                if transport_type == "streamable_http":
+                    # Explicit Streamable HTTP (no fallback)
+                    logger.info(f'MCP server "{server_name}": '
+                               f"connecting via Streamable HTTP (explicit) to {url_str}")
+                    
+                    kwargs = {}
+                    if headers is not None:
+                        kwargs["headers"] = headers
+                    if timeout != 30.0:
+                        kwargs["timeout"] = timeout
+                    if auth is not None:
+                        kwargs["auth"] = auth
+                    
+                    transport = await exit_stack.enter_async_context(
+                        streamablehttp_client(url_str, **kwargs)
+                    )
+                    
+                elif transport_type == "sse":
+                    # Explicit SSE (no fallback)
+                    logger.info(f'MCP server "{server_name}": '
+                               f"connecting via SSE (explicit) to {url_str}")
+                    logger.warning(f'MCP server "{server_name}": '
+                                  f"SSE transport is deprecated, consider migrating to streamable_http")
+                    
+                    transport = await exit_stack.enter_async_context(
+                        sse_client(url_str, headers=headers)
+                    )
+                    
+                else:
+                    # Auto-detection: Try Streamable HTTP first, fallback to SSE on 4xx
+                    logger.debug(f'MCP server "{server_name}": '
+                                f"attempting Streamable HTTP with SSE fallback")
+                    
+                    # First attempt: Streamable HTTP
+                    try:
+                        logger.info(f'MCP server "{server_name}": '
+                                   f"trying Streamable HTTP to {url_str}")
+                        
+                        kwargs = {}
+                        if headers is not None:
+                            kwargs["headers"] = headers
+                        if timeout != 30.0:
+                            kwargs["timeout"] = timeout
+                        if auth is not None:
+                            kwargs["auth"] = auth
+                        
+                        transport = await exit_stack.enter_async_context(
+                            streamablehttp_client(url_str, **kwargs)
+                        )
+                        
+                        logger.info(f'MCP server "{server_name}": '
+                                   f"successfully connected using Streamable HTTP")
+                        
+                    except Exception as error:
+                        if is_4xx_error(error):
+                            # Fallback to SSE on 4xx errors per MCP spec
+                            logger.info(f'MCP server "{server_name}": '
+                                       f"Streamable HTTP failed with 4xx error, falling back to SSE")
+                            logger.warning(f'MCP server "{server_name}": '
+                                          f"Using SSE fallback (deprecated), server should support Streamable HTTP")
+                            
+                            transport = await exit_stack.enter_async_context(
+                                sse_client(url_str, headers=headers)
+                            )
+                            
+                            logger.info(f'MCP server "{server_name}": '
+                                       f"successfully connected using SSE fallback")
+                        else:
+                            # Re-throw non-4xx errors (network issues, etc.)
+                            logger.error(f'MCP server "{server_name}": '
+                                        f"Streamable HTTP failed with non-4xx error: {error}")
+                            raise
+                            
+            elif url_scheme in ("ws", "wss"):
                 # WebSocket transport
                 logger.info(f'MCP server "{server_name}": '
                            f"connecting via WebSocket to {url_str}")
@@ -289,10 +381,9 @@ async def spawn_mcp_server_and_get_transport(
                 
             else:
                 raise ValueError(
-                    f'Unsupported transport "{transport_type}" or URL scheme "{url_scheme}" '
-                    f'for server "{server_name}". '
-                    f'Supported transports: "streamable_http" (recommended), "sse" (deprecated), "websocket". '
-                    f'Supported URL schemes: http/https (for streamable_http/sse), ws/wss (for websocket).'
+                    f'Unsupported URL scheme "{url_scheme}" for server "{server_name}". '
+                    f'Supported URL schemes: http/https (for streamable_http/sse with auto-fallback), '
+                    f'ws/wss (for websocket).'
                 )
         
         else:
@@ -535,14 +626,15 @@ async def convert_mcp_to_langchain_tools(
     servers, converts their tools to LangChain format, and provides a cleanup
     mechanism. It orchestrates the full lifecycle of multiple servers.
 
-    Supports multiple transport types with Streamable HTTP as the recommended option:
-    - stdio: For local command-based servers
-    - streamable_http: For Streamable HTTP servers (recommended for production)
-    - sse: For Server-Sent Events HTTP servers (legacy, deprecated)
-    - websocket: For WebSocket servers
+    Implements MCP specification backwards compatibility: for HTTP URLs,
+    automatically tries Streamable HTTP first, then falls back to SSE on 4xx 
+    errors for maximum server compatibility.
 
-    Note: Streamable HTTP is the recommended transport for production deployments
-    as it supersedes SSE and provides better scalability, resumability, and performance.
+    Supports multiple transport types:
+    - stdio: For local command-based servers
+    - streamable_http: For Streamable HTTP servers (tried first for HTTP URLs)
+    - sse: For Server-Sent Events HTTP servers (fallback for HTTP URLs)
+    - websocket: For WebSocket servers
 
     Args:
         server_configs: Dictionary mapping server names to their
@@ -568,13 +660,13 @@ async def convert_mcp_to_langchain_tools(
             "weather": {
                 "command": "npx", "args": ["-y","@h1deya/mcp-server-weather"]
             },
-            "remote-api": {
+            "auto-detection-server": {
                 "url": "https://api.example.com/mcp",
-                "transport": "streamable_http",
+                # Will auto-try Streamable HTTP, fallback to SSE on 4xx
                 "headers": {"Authorization": "Bearer token123"},
                 "timeout": 60.0
             },
-            "legacy-api": {
+            "explicit-sse-server": {
                 "url": "https://legacy.example.com/mcp/sse",
                 "transport": "sse",
                 "headers": {"Authorization": "Bearer token123"}
