@@ -228,6 +228,13 @@ def is_4xx_error(error: Exception) -> bool:
     
     error_str = str(error).lower()
     
+    # Handle ExceptionGroup (Python 3.11+) by checking sub-exceptions
+    if hasattr(error, 'exceptions'):
+        # This is an ExceptionGroup, check all sub-exceptions
+        for sub_error in error.exceptions:
+            if is_4xx_error(sub_error):
+                return True
+    
     # Check for explicit HTTP status codes
     if hasattr(error, 'status') and isinstance(error.status, int):
         return 400 <= error.status < 500
@@ -245,6 +252,16 @@ def is_4xx_error(error: Exception) -> bool:
         
     if 'not found' in error_str and '404' in error_str:
         return True  # Explicit 404
+    
+    # Check for timeout during session initialization (indicates 4xx response)
+    if 'session initialization timed out' in error_str:
+        return True  # Session hung waiting for response after 404
+    
+    # Check for task group errors that often contain HTTP errors
+    if 'taskgroup' in error_str or 'task group' in error_str:
+        # Look for HTTP status codes in the error message
+        if any(code in error_str for code in ['404', '400', '401', '402', '403', '405']):
+            return True
     
     # Enhanced 4xx detection patterns (matching TypeScript logic)
     if any(code in error_str for code in ['400', '401', '402', '403', '404', '405', '406', '407', '408', '409']):
@@ -361,24 +378,52 @@ async def spawn_mcp_server_and_get_transport(
                             kwargs["auth"] = auth
                         
                         # Test the connection by creating a temporary transport and session
+                        logger.debug(f'MCP server "{server_name}": '
+                                    f"creating test transport with streamablehttp_client")
+                        
                         async with streamablehttp_client(url_str, **kwargs) as test_transport:
+                            logger.debug(f'MCP server "{server_name}": '
+                                        f"test transport created successfully, type: {type(test_transport)}")
                             logger.info(f'MCP server "{server_name}": '
                                        f"created Streamable HTTP transport, testing connection")
                             
                             # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
                             if len(test_transport) == 2:
                                 read, write = test_transport
+                                logger.debug(f'MCP server "{server_name}": '
+                                            f"extracted 2-tuple transport: read={type(read)}, write={type(write)}")
                             elif len(test_transport) == 3:
                                 read, write, _ = test_transport  # Third element is session info/metadata
+                                logger.debug(f'MCP server "{server_name}": '
+                                            f"extracted 3-tuple transport: read={type(read)}, write={type(write)}")
                             else:
                                 raise ValueError(f"Unexpected transport tuple length: {len(test_transport)}")
                             
                             # Test connection with a session (this is where 4xx errors surface)
+                            logger.debug(f'MCP server "{server_name}": '
+                                        f"creating test ClientSession")
                             test_session = ClientSession(read, write)
-                            await test_session.initialize()
+                            
+                            logger.debug(f'MCP server "{server_name}": '
+                                        f"calling test_session.initialize() with timeout")
+                            
+                            # Add timeout to prevent hanging on 404 responses
+                            import asyncio
+                            try:
+                                await asyncio.wait_for(test_session.initialize(), timeout=5.0)
+                            except asyncio.TimeoutError:
+                                raise Exception("Session initialization timed out - likely 4xx error")
+                            
+                            logger.debug(f'MCP server "{server_name}": '
+                                        f"test_session.initialize() completed, calling close()")
                             await test_session.close()  # Clean up test session
+                            
+                            logger.debug(f'MCP server "{server_name}": '
+                                        f"test session closed successfully")
                         
                         # If we get here, Streamable HTTP works! Create the real transport
+                        logger.debug(f'MCP server "{server_name}": '
+                                    f"test successful, creating real transport")
                         transport = await exit_stack.enter_async_context(
                             streamablehttp_client(url_str, **kwargs)
                         )
@@ -387,6 +432,17 @@ async def spawn_mcp_server_and_get_transport(
                                    f"successfully connected using Streamable HTTP")
                         
                     except Exception as error:
+                        logger.debug(f'MCP server "{server_name}": '
+                                    f"exception caught in auto-detection: {type(error).__name__}: {error}")
+                        
+                        # If it's an ExceptionGroup, log the sub-exceptions too
+                        if hasattr(error, 'exceptions'):
+                            logger.debug(f'MCP server "{server_name}": '
+                                        f"ExceptionGroup contains {len(error.exceptions)} sub-exceptions:")
+                            for i, sub_error in enumerate(error.exceptions):
+                                logger.debug(f'MCP server "{server_name}": '
+                                            f"  Sub-exception {i}: {type(sub_error).__name__}: {sub_error}")
+                        
                         logger.debug(f'MCP server "{server_name}": '
                                     f"Streamable HTTP connection test failed: {error}")
                         logger.debug(f'MCP server "{server_name}": '
@@ -644,7 +700,7 @@ def init_logger() -> logging.Logger:
         A configured Logger instance
     """
     logging.basicConfig(
-        level=logging.INFO,  # logging.DEBUG,
+        level=logging.DEBUG,  # Changed to DEBUG for better visibility
         format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
     )
     return logging.getLogger()
