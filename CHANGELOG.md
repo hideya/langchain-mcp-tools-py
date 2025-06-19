@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Streamable HTTP Transport Support**: Added support for the new Streamable HTTP transport (recommended for production)
+- Transport identifier `"streamable_http"` to align with TypeScript version
+- Deprecation warnings for legacy SSE transport
+- Enhanced logging to show transport selection and deprecation notices
+- Comprehensive documentation for Streamable HTTP migration
+- Example code demonstrating different transport configurations
+
 ### Changed
+- **BREAKING**: HTTP/HTTPS URLs now default to `streamable_http` transport instead of `sse`
+- **BREAKING**: Transport identifier changed from `"streamable-http"` to `"streamable_http"` (underscore) for TypeScript alignment
+- Prioritized Streamable HTTP over SSE in transport selection logic
+- Enhanced error messages to reflect new transport priorities
+- Updated documentation to emphasize Streamable HTTP as the recommended transport
+- Added deprecation warnings for SSE transport usage
+
+### Deprecated
+- SSE transport is now deprecated in favor of Streamable HTTP
+- Users will see warnings when using `transport: "sse"`
+
+### Migration Guide
+- Remove explicit `transport: "sse"` from configurations to use the new `streamable_http` default
+- Update server endpoints to support Streamable HTTP transport
+- Monitor logs for deprecation warnings and plan SSE phase-out
+- See `docs/streamable-http-support.md` for detailed migration instructions
+
+### Fixed
 - Update dependencies
 
 ## [0.2.4] - 2025-04-24

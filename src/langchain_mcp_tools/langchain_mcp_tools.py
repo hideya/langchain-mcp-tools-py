@@ -77,25 +77,46 @@ class McpServerUrlBasedConfig(TypedDict):
     """Configuration for a remote MCP server accessed via URL.
 
     This configuration is used for remote MCP servers that are accessed via
-    HTTP/HTTPS (Server-Sent Events) or WebSocket connections. It defines the
-    URL to connect to and optional HTTP headers for authentication.
+    HTTP/HTTPS (Streamable HTTP, Server-Sent Events) or WebSocket connections.
+    It defines the URL to connect to and optional HTTP headers for authentication.
+
+    Note: Streamable HTTP is the recommended transport for production deployments
+    as it supersedes SSE (Server-Sent Events).
 
     Attributes:
-        url: The URL of the remote MCP server. For SSE servers,
+        url: The URL of the remote MCP server. For HTTP/HTTPS servers,
                 use http:// or https:// prefix. For WebSocket servers,
                 use ws:// or wss:// prefix.
+        transport: Optional transport type. Supported values:
+                "streamable_http" (recommended, default for http/https), 
+                "sse" (legacy), "websocket"
         headers: Optional dictionary of HTTP headers to include in the request,
                 typically used for authentication (e.g., bearer tokens).
+        timeout: Optional timeout for HTTP requests (default: 30.0 seconds).
+        sse_read_timeout: Optional timeout for SSE connections (SSE only).
+        terminate_on_close: Optional flag to terminate on connection close.
+        httpx_client_factory: Optional factory for creating HTTP clients.
+        auth: Optional httpx authentication for requests.
 
-    Example for SSE server:
+    Example for Streamable HTTP server (recommended):
+        {
+            "url": "https://api.example.com/mcp",
+            "transport": "streamable_http",
+            "headers": {"Authorization": "Bearer token123"},
+            "timeout": 60.0
+        }
+
+    Example for legacy SSE server:
         {
             "url": "https://example.com/mcp/sse",
+            "transport": "sse",
             "headers": {"Authorization": "Bearer token123"}
         }
 
     Example for WebSocket server:
         {
-            "url": "wss://example.com/mcp/ws"
+            "url": "wss://example.com/mcp/ws",
+            "transport": "websocket"
         }
     """
     url: str
@@ -140,8 +161,15 @@ Example:
             "command": "uvx",
             "args": ["mcp-server-fetch"]
         },
-        "remote-server": {
+        "remote-streamable-server": {
+            "url": "https://api.example.com/mcp",
+            "transport": "streamable_http",
+            "headers": {"Authorization": "Bearer token123"},
+            "timeout": 60.0
+        },
+        "remote-sse-server": {
             "url": "https://example.com/mcp/sse",
+            "transport": "sse",
             "headers": {"Authorization": "Bearer token123"}
         }
     }
@@ -182,6 +210,15 @@ async def spawn_mcp_server_and_get_transport(
 ) -> Transport:
     """Spawns an MCP server process and establishes communication channels.
 
+    This function supports multiple transport types:
+    - stdio: For local command-based servers
+    - streamable_http: For Streamable HTTP servers (recommended for production)
+    - sse: For Server-Sent Events HTTP servers (legacy, deprecated)
+    - websocket: For WebSocket servers
+
+    Note: Streamable HTTP is the recommended transport for production deployments
+    as it supersedes SSE and provides better scalability and performance.
+
     Args:
         server_name: Server instance name to use for better logging
         server_config: Configuration dictionary for server setup
@@ -198,23 +235,71 @@ async def spawn_mcp_server_and_get_transport(
         logger.info(f'MCP server "{server_name}": '
                     f"initializing with: {server_config}")
 
+        # Check if this is a URL-based configuration
         url_str = str(server_config.get("url"))  # None becomes "None"
-        headers = (cast(McpServerUrlBasedConfig, server_config)
-                   .get("headers", None))
-        # no exception thrown even for a malformed URL
-        url_scheme = urlparse(url_str).scheme
-
-        if url_scheme in ("http", "https"):
-            transport = await exit_stack.enter_async_context(
-                sse_client(url_str, headers=headers)
-            )
-
-        elif url_scheme in ("ws", "wss"):
-            transport = await exit_stack.enter_async_context(
-                websocket_client(url_str)
-            )
-
+        
+        if url_str != "None":  # URL-based configuration
+            url_config = cast(McpServerUrlBasedConfig, server_config)
+            url_scheme = urlparse(url_str).scheme
+            transport_type = url_config.get("transport", "").lower()
+            
+            # Extract common parameters
+            headers = url_config.get("headers", None)
+            timeout = url_config.get("timeout", 30.0)
+            auth = url_config.get("auth", None)
+            
+            # Determine transport type - prioritize Streamable HTTP
+            if transport_type == "streamable_http" or (transport_type == "" and url_scheme in ("http", "https")):
+                # Streamable HTTP transport (recommended, default for http/https)
+                logger.info(f'MCP server "{server_name}": '
+                           f"connecting via Streamable HTTP to {url_str}")
+                
+                # Prepare kwargs for streamablehttp_client
+                kwargs = {}
+                if headers is not None:
+                    kwargs["headers"] = headers
+                if timeout != 30.0:  # Only pass if different from default
+                    kwargs["timeout"] = timeout
+                if auth is not None:
+                    kwargs["auth"] = auth
+                
+                transport = await exit_stack.enter_async_context(
+                    streamablehttp_client(url_str, **kwargs)
+                )
+                
+            elif transport_type == "sse":
+                # SSE transport (legacy, deprecated)
+                logger.info(f'MCP server "{server_name}": '
+                           f"connecting via SSE (legacy) to {url_str}")
+                logger.warning(f'MCP server "{server_name}": '
+                              f"SSE transport is deprecated, consider migrating to streamable_http")
+                
+                transport = await exit_stack.enter_async_context(
+                    sse_client(url_str, headers=headers)
+                )
+                
+            elif transport_type == "websocket" or url_scheme in ("ws", "wss"):
+                # WebSocket transport
+                logger.info(f'MCP server "{server_name}": '
+                           f"connecting via WebSocket to {url_str}")
+                
+                transport = await exit_stack.enter_async_context(
+                    websocket_client(url_str)
+                )
+                
+            else:
+                raise ValueError(
+                    f'Unsupported transport "{transport_type}" or URL scheme "{url_scheme}" '
+                    f'for server "{server_name}". '
+                    f'Supported transports: "streamable_http" (recommended), "sse" (deprecated), "websocket". '
+                    f'Supported URL schemes: http/https (for streamable_http/sse), ws/wss (for websocket).'
+                )
+        
         else:
+            # Command-based configuration (stdio transport)
+            logger.info(f'MCP server "{server_name}": '
+                       f"spawning local process via stdio")
+            
             # NOTE: `uv` and `npx` seem to require PATH to be set.
             # To avoid confusion, it was decided to automatically append it
             # to the env if not explicitly set by the config.
@@ -450,10 +535,20 @@ async def convert_mcp_to_langchain_tools(
     servers, converts their tools to LangChain format, and provides a cleanup
     mechanism. It orchestrates the full lifecycle of multiple servers.
 
+    Supports multiple transport types with Streamable HTTP as the recommended option:
+    - stdio: For local command-based servers
+    - streamable_http: For Streamable HTTP servers (recommended for production)
+    - sse: For Server-Sent Events HTTP servers (legacy, deprecated)
+    - websocket: For WebSocket servers
+
+    Note: Streamable HTTP is the recommended transport for production deployments
+    as it supersedes SSE and provides better scalability, resumability, and performance.
+
     Args:
         server_configs: Dictionary mapping server names to their
             configurations, where each configuration contains command, args,
-            and env settings
+            and env settings for stdio servers, or url, transport, and headers
+            for remote servers
         logger: Logger instance to use for logging events and errors.
             If None, uses module logger with fallback to a pre-configured
             logger when no root handlers exist.
@@ -472,6 +567,17 @@ async def convert_mcp_to_langchain_tools(
             },
             "weather": {
                 "command": "npx", "args": ["-y","@h1deya/mcp-server-weather"]
+            },
+            "remote-api": {
+                "url": "https://api.example.com/mcp",
+                "transport": "streamable_http",
+                "headers": {"Authorization": "Bearer token123"},
+                "timeout": 60.0
+            },
+            "legacy-api": {
+                "url": "https://legacy.example.com/mcp/sse",
+                "transport": "sse",
+                "headers": {"Authorization": "Bearer token123"}
             }
         }
 

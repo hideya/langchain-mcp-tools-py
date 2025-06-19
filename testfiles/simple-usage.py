@@ -75,6 +75,7 @@ async def run() -> None:
 
             "weather": {
                 "url": f"http://localhost:{sse_server_port}/sse",
+                "transport": "sse",
                 # only tests syntax, not functionality
                 "headers": {"Authorization": f"Bearer {bearer_token}"}
             },
@@ -136,10 +137,10 @@ async def run() -> None:
         print("\x1b[0m");  # reset the color
 
         # query = "Tell me how LLMs work in a few sentences"
-        query = "Read the news headlines on bbc.com"
+        # query = "Read the news headlines on bbc.com"
         # query = "Read and briefly summarize the LICENSE file"
         # query = "Tell me the number of directories in the current directory"
-        # query = "Tomorrow's weather in SF?"
+        query = "Tomorrow's weather in SF?"
 
         print("\x1b[33m")  # color to yellow
         print(query)
