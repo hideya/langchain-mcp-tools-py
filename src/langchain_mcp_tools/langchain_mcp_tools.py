@@ -341,11 +341,13 @@ async def spawn_mcp_server_and_get_transport(
                     )
                     
                 else:
-                    # Auto-detection: Try Streamable HTTP first, fallback to SSE on 4xx
+                    # Auto-detection with client-level testing (like TypeScript)
                     logger.debug(f'MCP server "{server_name}": '
                                 f"attempting Streamable HTTP with SSE fallback")
                     
-                    # First attempt: Streamable HTTP
+                    connection_succeeded = False
+                    
+                    # First attempt: Streamable HTTP with client connection test
                     try:
                         logger.info(f'MCP server "{server_name}": '
                                    f"trying Streamable HTTP to {url_str}")
@@ -358,16 +360,35 @@ async def spawn_mcp_server_and_get_transport(
                         if auth is not None:
                             kwargs["auth"] = auth
                         
+                        # Test the connection by creating a temporary transport and session
+                        async with streamablehttp_client(url_str, **kwargs) as test_transport:
+                            logger.info(f'MCP server "{server_name}": '
+                                       f"created Streamable HTTP transport, testing connection")
+                            
+                            # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
+                            if len(test_transport) == 2:
+                                read, write = test_transport
+                            elif len(test_transport) == 3:
+                                read, write, _ = test_transport  # Third element is session info/metadata
+                            else:
+                                raise ValueError(f"Unexpected transport tuple length: {len(test_transport)}")
+                            
+                            # Test connection with a session (this is where 4xx errors surface)
+                            test_session = ClientSession(read, write)
+                            await test_session.initialize()
+                            await test_session.close()  # Clean up test session
+                        
+                        # If we get here, Streamable HTTP works! Create the real transport
                         transport = await exit_stack.enter_async_context(
                             streamablehttp_client(url_str, **kwargs)
                         )
-                        
+                        connection_succeeded = True
                         logger.info(f'MCP server "{server_name}": '
                                    f"successfully connected using Streamable HTTP")
                         
                     except Exception as error:
                         logger.debug(f'MCP server "{server_name}": '
-                                    f"Streamable HTTP failed: {error}")
+                                    f"Streamable HTTP connection test failed: {error}")
                         logger.debug(f'MCP server "{server_name}": '
                                     f"Error type: {type(error).__name__}")
                         logger.debug(f'MCP server "{server_name}": '
@@ -386,6 +407,8 @@ async def spawn_mcp_server_and_get_transport(
                             
                             logger.info(f'MCP server "{server_name}": '
                                        f"successfully connected using SSE fallback")
+                            connection_succeeded = True
+                            
                         else:
                             # Re-throw non-4xx errors (network issues, etc.)
                             logger.error(f'MCP server "{server_name}": '
