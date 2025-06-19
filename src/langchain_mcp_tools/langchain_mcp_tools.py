@@ -341,14 +341,11 @@ async def spawn_mcp_server_and_get_transport(
                     )
                     
                 else:
-                    # Auto-detection with CONNECTION-LEVEL testing (like TypeScript)
+                    # Auto-detection: Try Streamable HTTP first, fallback to SSE on 4xx
                     logger.debug(f'MCP server "{server_name}": '
                                 f"attempting Streamable HTTP with SSE fallback")
                     
-                    connection_succeeded = False
-                    transport = None
-                    
-                    # First attempt: Streamable HTTP with actual connection test
+                    # First attempt: Streamable HTTP
                     try:
                         logger.info(f'MCP server "{server_name}": '
                                    f"trying Streamable HTTP to {url_str}")
@@ -361,35 +358,16 @@ async def spawn_mcp_server_and_get_transport(
                         if auth is not None:
                             kwargs["auth"] = auth
                         
-                        # Create transport
                         transport = await exit_stack.enter_async_context(
                             streamablehttp_client(url_str, **kwargs)
                         )
                         
                         logger.info(f'MCP server "{server_name}": '
-                                   f"created Streamable HTTP transport, testing connection")
-                        
-                        # TEST THE ACTUAL CONNECTION (key difference from before!)
-                        # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
-                        if len(transport) == 2:
-                            read, write = transport
-                        elif len(transport) == 3:
-                            read, write, _ = transport  # Third element is session info/metadata
-                        else:
-                            raise ValueError(f"Unexpected transport tuple length: {len(transport)}")
-                        
-                        # Test connection by creating and initializing a session
-                        test_session = ClientSession(read, write)
-                        await test_session.initialize()
-                        await test_session.close()  # Clean up test session
-                        
-                        connection_succeeded = True
-                        logger.info(f'MCP server "{server_name}": '
                                    f"successfully connected using Streamable HTTP")
                         
                     except Exception as error:
                         logger.debug(f'MCP server "{server_name}": '
-                                    f"Streamable HTTP connection test failed: {error}")
+                                    f"Streamable HTTP failed: {error}")
                         logger.debug(f'MCP server "{server_name}": '
                                     f"Error type: {type(error).__name__}")
                         logger.debug(f'MCP server "{server_name}": '
@@ -402,15 +380,12 @@ async def spawn_mcp_server_and_get_transport(
                             logger.warning(f'MCP server "{server_name}": '
                                           f"Using SSE fallback (deprecated), server should support Streamable HTTP")
                             
-                            # Try SSE fallback
                             transport = await exit_stack.enter_async_context(
                                 sse_client(url_str, headers=headers)
                             )
                             
                             logger.info(f'MCP server "{server_name}": '
                                        f"successfully connected using SSE fallback")
-                            connection_succeeded = True
-                            
                         else:
                             # Re-throw non-4xx errors (network issues, etc.)
                             logger.error(f'MCP server "{server_name}": '
