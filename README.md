@@ -1,12 +1,18 @@
 # MCP To LangChain Tools Conversion Utility [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/)
 
-## NOTE
+This is a simple, lightweight library intended to simplify the use of
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+server tools with LangChain.
 
-LangChain's official **LangChain MCP Adapters** library has been released at:
+Its simplicity and extra features for stdio MCP servers can make it useful as a basis for your own customizations.
+However, it only supports text results of tool calls and does not support MCP features other than tools.
+
+LangChain's **official LangChain.js MCP Adapters** library,
+which supports comprehensive integration with LangChain, has been released at:
 - pypi: https://pypi.org/project/langchain-mcp-adapters/
 - github: https://github.com/langchain-ai/langchain-mcp-adapters
 
-You may want to consider using the above if you don't have specific needs for using this library...
+You may want to consider using the above if you don't have specific needs for this library.
 
 ## Introduction
 
@@ -14,23 +20,17 @@ This package is intended to simplify the use of
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server tools with LangChain / Python.
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/),
-an open standard
-[announced by Anthropic](https://www.anthropic.com/news/model-context-protocol),
-dramatically expands LLM’s scope
-by enabling external tool and resource integration, including
-GitHub, Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is the de facto industry standard
+that dramatically expands the scope of LLMs by enabling the integration of external tools and resources,
+including DBs, GitHub, Google Drive, Docker, Slack, Notion, Spotify, and more.
 
-MCP is likely to become the de facto industry standard as 
-[OpenAI has announced its adoption](https://techcrunch.com/2025/03/26/openai-adopts-rival-anthropics-standard-for-connecting-ai-models-to-data).
-
-Over 2000 functional components available as MCP servers:
+There are quite a few useful MCP servers already available:
 
 - [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers)
 - [MCP.so - Find Awesome MCP Servers and Clients](https://mcp.so/)
 - [Smithery: MCP Server Registry](https://smithery.ai/)
 
-The goal of this utility is to make these 2000+ MCP servers readily accessible from LangChain.
+This utility's goal is to make these massive numbers of MCP servers easily accessible from LangChain.
 
 It contains a utility function `convert_mcp_to_langchain_tools()`.  
 This async function handles parallel initialization of specified multiple MCP servers
@@ -97,7 +97,7 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model("anthropic:claude-3-7-sonnet-latest")
+llm = init_chat_model("anthropic:claude-sonnet-4-0")
 
 # from langgraph.prebuilt import create_react_agent
 agent = create_react_agent(
