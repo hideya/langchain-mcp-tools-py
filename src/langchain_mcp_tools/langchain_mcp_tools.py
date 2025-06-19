@@ -22,12 +22,14 @@ try:
         MemoryObjectReceiveStream,
         MemoryObjectSendStream,
     )
+    import httpx
     from jsonschema_pydantic import jsonschema_to_pydantic  # type: ignore
     from langchain_core.tools import BaseTool, ToolException
     from mcp import ClientSession
     from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client, StdioServerParameters
     from mcp.client.websocket import websocket_client
+    from mcp.shared._httpx_utils import McpHttpClientFactory
     import mcp.types as mcp_types
     from pydantic import BaseModel
     # from pydantic_core import to_json
@@ -96,8 +98,13 @@ class McpServerUrlBasedConfig(TypedDict):
         }
     """
     url: str
+    transport: NotRequired[str]
     headers: NotRequired[dict[str, str] | None]
-
+    timeout: NotRequired[float]
+    sse_read_timeout: NotRequired[float]
+    terminate_on_close: NotRequired[bool]
+    httpx_client_factory: NotRequired[McpHttpClientFactory]
+    auth: NotRequired[httpx.Auth]
 
 # Type for a single MCP server configuration, which can be either
 # command-based or URL-based.

@@ -18,6 +18,7 @@ dependencies = [
     "jsonschema-pydantic>=0.6",
     "langchain>=0.3.14",
     "mcp>=1.6.0",
+    "websockets>=15.0.1",
 ]
 
 [project.optional-dependencies]
@@ -26,12 +27,12 @@ dev = [
     "fastapi>=0.115.12",
     "pyjwt>=2.10.1",
     "langchain-anthropic>=0.3.1",
+    "langchain-google-genai>=2.1.5",
     "langchain-groq>=0.2.3",
     "langchain-openai>=0.3.0",
     "langgraph>=0.2.62",
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.2",
-    "websockets>=15.0.1",
 ]
 
 [tool.setuptools]

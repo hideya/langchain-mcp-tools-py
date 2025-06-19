@@ -57,12 +57,14 @@ async def run() -> None:
                 ],
                 "cwd": "/tmp"  # the working dir to be use by the server
             },
+
             "fetch": {
                 "command": "uvx",
                 "args": [
                     "mcp-server-fetch"
                 ]
             },
+
             # "weather": {
             #     "command": "npx",
             #     "args": [
@@ -70,14 +72,16 @@ async def run() -> None:
             #         "@h1deya/mcp-server-weather"
             #     ]
             # },
-            # "weather": {
-            #     "url": f"http://localhost:{sse_server_port}/sse",
-            #     # only tests syntax, not functionality
-            #     "headers": {"Authorization": f"Bearer {bearer_token}"}
-            # },
+
             "weather": {
-                "url": f"ws://localhost:{ws_server_port}/message"
+                "url": f"http://localhost:{sse_server_port}/sse",
+                # only tests syntax, not functionality
+                "headers": {"Authorization": f"Bearer {bearer_token}"}
             },
+
+            # "weather": {
+            #     "url": f"ws://localhost:{ws_server_port}/message"
+            # },
         }
 
         # If you are interested in MCP server's stderr redirection,
@@ -107,18 +111,31 @@ async def run() -> None:
             # init_logger()
         )
 
-        # llm = init_chat_model("anthropic:claude-3-7-sonnet-latest")
-        llm = init_chat_model("openai:o3-mini")
+        ### https://docs.anthropic.com/en/docs/about-claude/pricing
+        # llm = init_chat_model("anthropic:claude-3-5-haiku-latest")
+        # llm = init_chat_model("anthropic:claude-sonnet-4-0")
+        
+        ### https://platform.openai.com/docs/pricing
+        llm = init_chat_model("openai:gpt-4o-mini")
+        # llm = init_chat_model("openai:o4-mini")
+        
+        ### https://ai.google.dev/gemini-api/docs/pricing
+        # llm = init_chat_model("google_genai:gemini-2.0-flash")
+        # llm = init_chat_model("google_genai:gemini-2.5-pro-preview-06-05")
 
         agent = create_react_agent(
             llm,
             tools
         )
+        
+        print("\x1b[32m");  # color to green
+        print("\nLLM model:", getattr(llm, 'model', getattr(llm, 'model_name', 'unknown')))
+        print("\x1b[0m");  # reset the color
 
-        # query = "Read the news headlines on bbc.com"
+        query = "Read the news headlines on bbc.com"
         # query = "Read and briefly summarize the LICENSE file"
         # query = "Tell me the number of directories in the current directory"
-        query = "Tomorrow's weather in SF?"
+        # query = "Tomorrow's weather in SF?"
 
         print("\x1b[33m")  # color to yellow
         print(query)
