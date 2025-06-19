@@ -15,6 +15,7 @@ from typing import (
     TypedDict,
 )
 from urllib.parse import urlparse
+import time
 
 # Third-party imports
 try:
@@ -230,10 +231,7 @@ def is_4xx_error(error: Exception) -> bool:
     
     # Handle ExceptionGroup (Python 3.11+) by checking sub-exceptions
     if hasattr(error, 'exceptions'):
-        # This is an ExceptionGroup, check all sub-exceptions
-        for sub_error in error.exceptions:
-            if is_4xx_error(sub_error):
-                return True
+        return any(is_4xx_error(sub_error) for sub_error in error.exceptions)
     
     # Check for explicit HTTP status codes
     if hasattr(error, 'status') and isinstance(error.status, int):
@@ -243,38 +241,103 @@ def is_4xx_error(error: Exception) -> bool:
     if hasattr(error, 'response') and hasattr(error.response, 'status_code'):
         return 400 <= error.response.status_code < 500
     
-    # Check for MCP protocol errors that indicate 4xx-like conditions
-    if 'session terminated' in error_str:
-        return True  # Often indicates server rejected the connection
-    
-    if 'method not found' in error_str or 'method not allowed' in error_str:
-        return True  # Equivalent to 405 Method Not Allowed
-        
-    if 'not found' in error_str and '404' in error_str:
-        return True  # Explicit 404
-    
-    # Check for timeout during session initialization (indicates 4xx response)
-    if 'session initialization timed out' in error_str:
-        return True  # Session hung waiting for response after 404
-    
-    # Check for task group errors that often contain HTTP errors
-    if 'taskgroup' in error_str or 'task group' in error_str:
-        # Look for HTTP status codes in the error message
-        if any(code in error_str for code in ['404', '400', '401', '402', '403', '405']):
-            return True
-    
-    # Enhanced 4xx detection patterns (matching TypeScript logic)
+    # Enhanced 4xx detection patterns
     if any(code in error_str for code in ['400', '401', '402', '403', '404', '405', '406', '407', '408', '409']):
         return True
     
     # Check for common 4xx error messages
-    return (
-        'bad request' in error_str or
-        'unauthorized' in error_str or
-        'forbidden' in error_str or
-        'not found' in error_str or
-        'method not allowed' in error_str
-    )
+    return any(pattern in error_str for pattern in [
+        'bad request',
+        'unauthorized',
+        'forbidden',
+        'not found',
+        'method not allowed'
+    ])
+
+
+async def test_streamable_http_support(
+    url: str, 
+    headers: dict[str, str] | None = None,
+    timeout: float = 30.0,
+    auth: httpx.Auth | None = None,
+    logger: logging.Logger = logging.getLogger(__name__)
+) -> bool:
+    """Test if URL supports Streamable HTTP per official MCP specification.
+    
+    Official MCP spec approach (2025-03-26):
+    1. POST InitializeRequest to the URL with proper Accept headers
+    2. If succeeds (200 OK + application/json) -> Streamable HTTP supported
+    3. If 4xx error -> fallback to SSE
+    4. Other errors -> re-raise
+    
+    Args:
+        url: The MCP server URL to test
+        headers: Optional HTTP headers
+        timeout: Request timeout
+        auth: Optional httpx authentication
+        logger: Logger for debugging
+        
+    Returns:
+        True if Streamable HTTP is supported, False if should fallback to SSE
+        
+    Raises:
+        Exception: For non-4xx errors that should be re-raised
+    """
+    init_request = {
+        "jsonrpc": "2.0",
+        "id": f"streamable-test-{int(time.time())}",
+        "method": "initialize", 
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {
+                "name": "langchain-mcp-tools",
+                "version": "1.0.0"
+            }
+        }
+    }
+    
+    request_headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
+    }
+    if headers:
+        request_headers.update(headers)
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            logger.debug(f"Testing Streamable HTTP: POST {url}")
+            response = await client.post(
+                url,
+                json=init_request,
+                headers=request_headers,
+                timeout=timeout,
+                auth=auth
+            )
+            
+            logger.debug(f"Response: {response.status_code}, Content-Type: {response.headers.get('content-type', 'N/A')}")
+            
+            # Check response per MCP specification
+            if (response.status_code == 200 and 
+                response.headers.get('content-type', '').startswith('application/json')):
+                logger.debug("Streamable HTTP test successful")
+                return True
+            elif 400 <= response.status_code < 500:
+                logger.debug(f"Received 4xx error ({response.status_code}), should fallback to SSE")
+                return False
+            else:
+                # Non-4xx errors should be re-raised
+                response.raise_for_status()
+                return True  # If we get here, it succeeded
+                
+    except httpx.TimeoutException:
+        # Timeouts are not necessarily 4xx errors - could be network issues
+        logger.debug("Request timeout - treating as non-4xx error")
+        raise Exception("Connection timeout during Streamable HTTP test")
+    except httpx.ConnectError:
+        # Connection errors are not 4xx
+        logger.debug("Connection error - treating as non-4xx error") 
+        raise Exception("Connection error during Streamable HTTP test")
 
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
@@ -285,11 +348,10 @@ async def spawn_mcp_server_and_get_transport(
     """Spawns an MCP server process and establishes communication channels.
 
     This function implements the MCP specification's backwards compatibility
-    recommendation: for HTTP URLs, try Streamable HTTP first with CONNECTION-LEVEL
-    testing, then fallback to SSE on 4xx errors.
+    recommendation: for HTTP URLs, try Streamable HTTP first with official
+    POST InitializeRequest testing, then fallback to SSE on 4xx errors.
 
-    KEY CHANGE: Unlike the previous version, this does ACTUAL connection testing
-    to the server, not just transport creation, matching the TypeScript implementation.
+    Updated to follow official MCP specification (2025-03-26) for connection testing.
 
     Supports multiple transport types:
     - stdio: For local command-based servers
@@ -358,102 +420,41 @@ async def spawn_mcp_server_and_get_transport(
                     )
                     
                 else:
-                    # Auto-detection with client-level testing (like TypeScript)
+                    # Auto-detection using official MCP specification approach
                     logger.debug(f'MCP server "{server_name}": '
                                 f"attempting Streamable HTTP with SSE fallback")
                     
-                    connection_succeeded = False
-                    
-                    # First attempt: Streamable HTTP with client connection test
+                    # Test using official MCP spec approach
                     try:
                         logger.info(f'MCP server "{server_name}": '
-                                   f"trying Streamable HTTP to {url_str}")
+                                   f"testing Streamable HTTP support for {url_str}")
                         
-                        kwargs = {}
-                        if headers is not None:
-                            kwargs["headers"] = headers
-                        if timeout != 30.0:
-                            kwargs["timeout"] = timeout
-                        if auth is not None:
-                            kwargs["auth"] = auth
-                        
-                        # Test the connection by creating a temporary transport and session
-                        logger.debug(f'MCP server "{server_name}": '
-                                    f"creating test transport with streamablehttp_client")
-                        
-                        async with streamablehttp_client(url_str, **kwargs) as test_transport:
-                            logger.debug(f'MCP server "{server_name}": '
-                                        f"test transport created successfully, type: {type(test_transport)}")
-                            logger.info(f'MCP server "{server_name}": '
-                                       f"created Streamable HTTP transport, testing connection")
-                            
-                            # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
-                            if len(test_transport) == 2:
-                                read, write = test_transport
-                                logger.debug(f'MCP server "{server_name}": '
-                                            f"extracted 2-tuple transport: read={type(read)}, write={type(write)}")
-                            elif len(test_transport) == 3:
-                                read, write, _ = test_transport  # Third element is session info/metadata
-                                logger.debug(f'MCP server "{server_name}": '
-                                            f"extracted 3-tuple transport: read={type(read)}, write={type(write)}")
-                            else:
-                                raise ValueError(f"Unexpected transport tuple length: {len(test_transport)}")
-                            
-                            # Test connection with a session (this is where 4xx errors surface)
-                            logger.debug(f'MCP server "{server_name}": '
-                                        f"creating test ClientSession")
-                            test_session = ClientSession(read, write)
-                            
-                            logger.debug(f'MCP server "{server_name}": '
-                                        f"calling test_session.initialize() with timeout")
-                            
-                            # Add timeout to prevent hanging on 404 responses
-                            import asyncio
-                            try:
-                                await asyncio.wait_for(test_session.initialize(), timeout=5.0)
-                            except asyncio.TimeoutError:
-                                raise Exception("Session initialization timed out - likely 4xx error")
-                            
-                            logger.debug(f'MCP server "{server_name}": '
-                                        f"test_session.initialize() completed, calling close()")
-                            await test_session.close()  # Clean up test session
-                            
-                            logger.debug(f'MCP server "{server_name}": '
-                                        f"test session closed successfully")
-                        
-                        # If we get here, Streamable HTTP works! Create the real transport
-                        logger.debug(f'MCP server "{server_name}": '
-                                    f"test successful, creating real transport")
-                        transport = await exit_stack.enter_async_context(
-                            streamablehttp_client(url_str, **kwargs)
+                        supports_streamable = await test_streamable_http_support(
+                            url_str, 
+                            headers=headers,
+                            timeout=timeout,
+                            auth=auth,
+                            logger=logger
                         )
-                        connection_succeeded = True
-                        logger.info(f'MCP server "{server_name}": '
-                                   f"successfully connected using Streamable HTTP")
                         
-                    except Exception as error:
-                        logger.debug(f'MCP server "{server_name}": '
-                                    f"exception caught in auto-detection: {type(error).__name__}: {error}")
-                        
-                        # If it's an ExceptionGroup, log the sub-exceptions too
-                        if hasattr(error, 'exceptions'):
-                            logger.debug(f'MCP server "{server_name}": '
-                                        f"ExceptionGroup contains {len(error.exceptions)} sub-exceptions:")
-                            for i, sub_error in enumerate(error.exceptions):
-                                logger.debug(f'MCP server "{server_name}": '
-                                            f"  Sub-exception {i}: {type(sub_error).__name__}: {sub_error}")
-                        
-                        logger.debug(f'MCP server "{server_name}": '
-                                    f"Streamable HTTP connection test failed: {error}")
-                        logger.debug(f'MCP server "{server_name}": '
-                                    f"Error type: {type(error).__name__}")
-                        logger.debug(f'MCP server "{server_name}": '
-                                    f"Is 4xx error: {is_4xx_error(error)}")
-                        
-                        if is_4xx_error(error):
-                            # Fallback to SSE on 4xx errors per MCP spec
+                        if supports_streamable:
                             logger.info(f'MCP server "{server_name}": '
-                                       f"Streamable HTTP failed with 4xx error, falling back to SSE")
+                                       f"server supports Streamable HTTP")
+                            
+                            kwargs = {}
+                            if headers is not None:
+                                kwargs["headers"] = headers
+                            if timeout != 30.0:
+                                kwargs["timeout"] = timeout
+                            if auth is not None:
+                                kwargs["auth"] = auth
+                            
+                            transport = await exit_stack.enter_async_context(
+                                streamablehttp_client(url_str, **kwargs)
+                            )
+                        else:
+                            logger.info(f'MCP server "{server_name}": '
+                                       f"server returned 4xx, falling back to SSE")
                             logger.warning(f'MCP server "{server_name}": '
                                           f"Using SSE fallback (deprecated), server should support Streamable HTTP")
                             
@@ -461,15 +462,10 @@ async def spawn_mcp_server_and_get_transport(
                                 sse_client(url_str, headers=headers)
                             )
                             
-                            logger.info(f'MCP server "{server_name}": '
-                                       f"successfully connected using SSE fallback")
-                            connection_succeeded = True
-                            
-                        else:
-                            # Re-throw non-4xx errors (network issues, etc.)
-                            logger.error(f'MCP server "{server_name}": '
-                                        f"Streamable HTTP failed with non-4xx error: {error}")
-                            raise
+                    except Exception as error:
+                        logger.error(f'MCP server "{server_name}": '
+                                    f"auto-detection failed with non-4xx error: {error}")
+                        raise
                             
             elif url_scheme in ("ws", "wss"):
                 # WebSocket transport
