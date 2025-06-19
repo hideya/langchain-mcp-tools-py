@@ -112,14 +112,17 @@ async def run() -> None:
         )
 
         ### https://docs.anthropic.com/en/docs/about-claude/pricing
+        ### https://console.anthropic.com/settings/billing
         # llm = init_chat_model("anthropic:claude-3-5-haiku-latest")
         # llm = init_chat_model("anthropic:claude-sonnet-4-0")
         
         ### https://platform.openai.com/docs/pricing
+        ### https://platform.openai.com/settings/organization/billing/overview
         llm = init_chat_model("openai:gpt-4o-mini")
         # llm = init_chat_model("openai:o4-mini")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
+        ### https://console.cloud.google.com/billing
         # llm = init_chat_model("google_genai:gemini-2.0-flash")
         # llm = init_chat_model("google_genai:gemini-2.5-pro-preview-06-05")
 
@@ -132,6 +135,7 @@ async def run() -> None:
         print("\nLLM model:", getattr(llm, 'model', getattr(llm, 'model_name', 'unknown')))
         print("\x1b[0m");  # reset the color
 
+        # query = "Tell me how LLMs work in a few sentences"
         query = "Read the news headlines on bbc.com"
         # query = "Read and briefly summarize the LICENSE file"
         # query = "Tell me the number of directories in the current directory"

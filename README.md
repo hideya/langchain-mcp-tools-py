@@ -182,16 +182,9 @@ to which local (stdio) MCP server's stderr is redirected.
     mcp_servers[server_name]["errlog"] = log_file
 ```
 
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108)
-
-**NOTE: Why the key name `errlog` was chosen:**  
-Unlike TypeScript SDK's `StdioServerParameters`, the Python
-SDK's `StdioServerParameters` doesn't include `stderr: int`.  
-Instead, it calls [`stdio_client()` with a separate argument
-`errlog: TextIO`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
-I once included `stderr: int` for
-compatibility with the TypeScript version, but decided to
-follow the Python SDK more closely.
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108).  
+The key name `errlog` is derived from
+[`stdio_client()`'s argument `errlog`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
 
 ## Limitations
 
