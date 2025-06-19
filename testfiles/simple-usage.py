@@ -26,7 +26,8 @@ from remote_server_utils import start_remote_mcp_server_locally
 # A very simple logger
 def init_logger() -> logging.Logger:
     logging.basicConfig(
-        level=logging.INFO,  # logging.DEBUG,
+        # level=logging.DEBUG,
+        level=logging.INFO,
         format="\x1b[90m%(levelname)s:\x1b[0m %(message)s"
     )
     return logging.getLogger()

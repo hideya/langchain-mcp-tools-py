@@ -696,10 +696,18 @@ def init_logger() -> logging.Logger:
         A configured Logger instance
     """
     logging.basicConfig(
-        level=logging.DEBUG,  # Changed to DEBUG for better visibility
+        level=logging.INFO,  # More reasonable default level
         format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
     )
-    return logging.getLogger()
+    # Only set MCP-related loggers to DEBUG for better MCP visibility
+    logger = logging.getLogger()
+    logging.getLogger("langchain_mcp_tools").setLevel(logging.DEBUG)
+    
+    # Keep HTTP libraries quieter
+    for lib in ["httpx", "urllib3", "requests", "anthropic", "openai"]:
+        logging.getLogger(lib).setLevel(logging.WARNING)
+    
+    return logger
 
 
 # Type hint for cleanup function
