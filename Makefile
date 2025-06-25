@@ -50,11 +50,11 @@ run-simple-usage: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/simple-usage.py
 
-run-test-sse-server: install
+run-sse-auth-test-server: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/sse-auth-test-server.py
 
-run-test-sse-client: install
+run-sse-auth-test-client: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/sse-auth-test-client.py
 
