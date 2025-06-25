@@ -212,22 +212,20 @@ Transport: TypeAlias = tuple[
 
 
 def is_4xx_error(error: Exception) -> bool:
-    """Determines if an error represents a 4xx HTTP status code or equivalent.
+    """Enhanced 4xx error detection matching TypeScript implementation.
     
     Used to decide whether to fall back from Streamable HTTP to SSE transport
-    per MCP specification. Also handles MCP protocol errors that indicate
+    per MCP specification. Handles various error types and patterns that indicate
     4xx-like conditions.
     
     Args:
         error: The error to check
         
     Returns:
-        true if the error represents a 4xx HTTP status or equivalent
+        True if the error represents a 4xx HTTP status or equivalent
     """
     if not error:
         return False
-    
-    error_str = str(error).lower()
     
     # Handle ExceptionGroup (Python 3.11+) by checking sub-exceptions
     if hasattr(error, 'exceptions'):
@@ -241,17 +239,23 @@ def is_4xx_error(error: Exception) -> bool:
     if hasattr(error, 'response') and hasattr(error.response, 'status_code'):
         return 400 <= error.response.status_code < 500
     
-    # Enhanced 4xx detection patterns
+    # Check error message for 4xx patterns
+    error_str = str(error).lower()
+    
+    # Look for specific 4xx status codes (enhanced pattern matching)
     if any(code in error_str for code in ['400', '401', '402', '403', '404', '405', '406', '407', '408', '409']):
         return True
     
-    # Check for common 4xx error messages
+    # Look for 4xx error names (expanded list matching TypeScript version)
     return any(pattern in error_str for pattern in [
         'bad request',
         'unauthorized',
-        'forbidden',
+        'forbidden', 
         'not found',
-        'method not allowed'
+        'method not allowed',
+        'not acceptable',
+        'request timeout',
+        'conflict'
     ])
 
 
@@ -264,11 +268,10 @@ async def test_streamable_http_support(
 ) -> bool:
     """Test if URL supports Streamable HTTP per official MCP specification.
     
-    Official MCP spec approach (2025-03-26):
-    1. POST InitializeRequest to the URL with proper Accept headers
-    2. If succeeds (200 OK + application/json) -> Streamable HTTP supported
-    3. If 4xx error -> fallback to SSE
-    4. Other errors -> re-raise
+    Follows the MCP specification's recommended approach for backwards compatibility.
+    Uses proper InitializeRequest with official protocol version and required headers.
+    
+    See: https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#backwards-compatibility
     
     Args:
         url: The MCP server URL to test
@@ -283,30 +286,32 @@ async def test_streamable_http_support(
     Raises:
         Exception: For non-4xx errors that should be re-raised
     """
+    # Create InitializeRequest as per MCP specification
     init_request = {
         "jsonrpc": "2.0",
-        "id": f"streamable-test-{int(time.time())}",
+        "id": f"transport-test-{int(time.time() * 1000)}",  # Use milliseconds like TS version
         "method": "initialize", 
         "params": {
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": "2024-11-05",  # Official MCP Protocol version
             "capabilities": {},
             "clientInfo": {
-                "name": "langchain-mcp-tools",
+                "name": "mcp-transport-test",
                 "version": "1.0.0"
             }
         }
     }
     
+    # Required headers per MCP specification
     request_headers = {
         'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
+        'Accept': 'application/json, text/event-stream'  # Required by spec
     }
     if headers:
         request_headers.update(headers)
     
     try:
         async with httpx.AsyncClient() as client:
-            logger.debug(f"Testing Streamable HTTP: POST {url}")
+            logger.debug(f"Testing Streamable HTTP: POST InitializeRequest to {url}")
             response = await client.post(
                 url,
                 json=init_request,
@@ -315,29 +320,33 @@ async def test_streamable_http_support(
                 auth=auth
             )
             
-            logger.debug(f"Response: {response.status_code}, Content-Type: {response.headers.get('content-type', 'N/A')}")
+            logger.debug(f"Transport test response: {response.status_code} {response.headers.get('content-type', 'N/A')}")
             
-            # Check response per MCP specification
-            if (response.status_code == 200 and 
-                response.headers.get('content-type', '').startswith('application/json')):
+            if response.status_code == 200:
+                # Success indicates Streamable HTTP support
                 logger.debug("Streamable HTTP test successful")
                 return True
             elif 400 <= response.status_code < 500:
-                logger.debug(f"Received 4xx error ({response.status_code}), should fallback to SSE")
+                # 4xx error indicates fallback to SSE per MCP spec
+                logger.debug(f"Received {response.status_code}, should fallback to SSE")
                 return False
             else:
-                # Non-4xx errors should be re-raised
+                # Other errors should be re-raised
                 response.raise_for_status()
                 return True  # If we get here, it succeeded
                 
     except httpx.TimeoutException:
-        # Timeouts are not necessarily 4xx errors - could be network issues
-        logger.debug("Request timeout - treating as non-4xx error")
-        raise Exception("Connection timeout during Streamable HTTP test")
+        logger.debug("Request timeout - treating as connection error")
+        raise
     except httpx.ConnectError:
-        # Connection errors are not 4xx
-        logger.debug("Connection error - treating as non-4xx error") 
-        raise Exception("Connection error during Streamable HTTP test")
+        logger.debug("Connection error")
+        raise
+    except Exception as e:
+        # Check if it's a 4xx-like error using improved detection
+        if is_4xx_error(e):
+            logger.debug(f"4xx-like error detected: {e}")
+            return False
+        raise
 
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
@@ -422,7 +431,7 @@ async def spawn_mcp_server_and_get_transport(
                 else:
                     # Auto-detection using official MCP specification approach
                     logger.debug(f'MCP server "{server_name}": '
-                                f"attempting Streamable HTTP with SSE fallback")
+                                f"auto-detecting transport using MCP specification method")
                     
                     # Test using official MCP spec approach
                     try:
@@ -439,12 +448,12 @@ async def spawn_mcp_server_and_get_transport(
                         
                         if supports_streamable:
                             logger.info(f'MCP server "{server_name}": '
-                                       f"server supports Streamable HTTP")
+                                       f"detected Streamable HTTP transport support")
                             
                             kwargs = {}
                             if headers is not None:
                                 kwargs["headers"] = headers
-                            if timeout != 30.0:
+                            if timeout is not None:
                                 kwargs["timeout"] = timeout
                             if auth is not None:
                                 kwargs["auth"] = auth
@@ -454,9 +463,9 @@ async def spawn_mcp_server_and_get_transport(
                             )
                         else:
                             logger.info(f'MCP server "{server_name}": '
-                                       f"server returned 4xx, falling back to SSE")
+                                       f"received 4xx error, falling back to SSE transport")
                             logger.warning(f'MCP server "{server_name}": '
-                                          f"Using SSE fallback (deprecated), server should support Streamable HTTP")
+                                          f"Using SSE transport (deprecated), server should support Streamable HTTP")
                             
                             transport = await exit_stack.enter_async_context(
                                 sse_client(url_str, headers=headers)
@@ -464,7 +473,7 @@ async def spawn_mcp_server_and_get_transport(
                             
                     except Exception as error:
                         logger.error(f'MCP server "{server_name}": '
-                                    f"auto-detection failed with non-4xx error: {error}")
+                                    f"transport detection failed: {error}")
                         raise
                             
             elif url_scheme in ("ws", "wss"):
