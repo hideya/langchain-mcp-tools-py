@@ -50,6 +50,14 @@ run-simple-usage: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/simple-usage.py
 
+run-test-sse-server: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/sse-auth-test-server.py
+
+run-test-sse-client: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/sse-auth-test-client.py
+
 sphinx: install
 	make -C docs clean html
 
