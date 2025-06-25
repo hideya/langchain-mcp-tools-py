@@ -105,22 +105,54 @@ if __name__ == "__main__":
     print_server_info()
     
     try:
-        # For stateless StreamableHTTP, use the official MCP SDK approach
+        # For stateless StreamableHTTP, run FastMCP app directly
+        # Based on GitHub issue #951, mounting causes 307 redirect problems
+        # Let's run the MCP app directly at the root with custom routing
+        
         # Get the streamable HTTP app from FastMCP
         mcp_app = mcp.streamable_http_app()
         
-        # Create a main Starlette app with health check endpoint
-        async def health_check(request):
-            return PlainTextResponse("MCP Streamable HTTP Stateless Test Server Running")
+        # Create a wrapper app that handles both health check and MCP
+        from starlette.middleware import Middleware
+        from starlette.applications import Starlette
+        from starlette.responses import PlainTextResponse
         
-        # Create main app with both health check and MCP endpoints
-        app = Starlette(routes=[
-            Route("/", health_check, methods=["GET"]),
-            Mount("/mcp", mcp_app),
-        ])
+        async def app_handler(scope, receive, send):
+            """Custom ASGI app that routes requests appropriately."""
+            if scope["type"] == "http":
+                path = scope["path"]
+                method = scope["method"]
+                
+                debug(f"Received {method} request to {path}")
+                
+                # Handle health check at root
+                if path == "/" and method == "GET":
+                    debug("Handling health check")
+                    response = PlainTextResponse("MCP Streamable HTTP Stateless Test Server Running")
+                    await response(scope, receive, send)
+                    return
+                
+                # Handle MCP requests - route /mcp/* to the MCP app
+                elif path.startswith("/mcp"):
+                    debug(f"Routing MCP request from {path}")
+                    # Adjust the path for the MCP app by removing /mcp prefix
+                    new_path = path[4:]  # Remove "/mcp"
+                    if not new_path:
+                        new_path = "/"
+                    
+                    debug(f"Adjusted path to: {new_path}")
+                    
+                    # Create new scope with adjusted path
+                    new_scope = {**scope, "path": new_path}
+                    await mcp_app(new_scope, receive, send)
+                    return
+            
+            debug(f"Delegating to MCP app: {scope.get('path', 'unknown')}")
+            # For all other requests, delegate to MCP app
+            await mcp_app(scope, receive, send)
         
-        # Run with uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=PORT)
+        # Run the custom app
+        uvicorn.run(app_handler, host="0.0.0.0", port=PORT)
     except KeyboardInterrupt:
         print("\nShutting down stateless server...")
         print("Stateless server stopped")
