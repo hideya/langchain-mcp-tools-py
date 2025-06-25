@@ -385,7 +385,7 @@ async def spawn_mcp_server_and_get_transport(
             
             # Extract common parameters
             headers = url_config.get("headers", None)
-            timeout = url_config.get("timeout", 30.0)
+            timeout = url_config.get("timeout", None)
             auth = url_config.get("auth", None)
             
             if url_scheme in ("http", "https"):
@@ -399,7 +399,7 @@ async def spawn_mcp_server_and_get_transport(
                     kwargs = {}
                     if headers is not None:
                         kwargs["headers"] = headers
-                    if timeout != 30.0:
+                    if timeout is not None:
                         kwargs["timeout"] = timeout
                     if auth is not None:
                         kwargs["auth"] = auth
