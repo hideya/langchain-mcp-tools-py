@@ -70,6 +70,7 @@ from langchain_mcp_tools import (
 
 # Configuration
 SERVER_URL = "http://127.0.0.1:3335"
+MCP_ENDPOINT = "http://127.0.0.1:3335/mcp"
 DEBUG = True
 
 # Enhanced logging
@@ -137,14 +138,14 @@ async def test_explicit_stateless_connection(logger: Logger) -> bool:
         # Create timeout for connection
         timeout = 30.0
         
-        logger.info(f"Using URL: {SERVER_URL}/mcp")
+        logger.info(f"Using URL: {MCP_ENDPOINT}")
         logger.info("Using transport: Streamable HTTP (stateless mode)")
         logger.info("Authentication: None required")
         
         # Configure MCP servers for explicit stateless connection
         mcp_servers: McpServersConfig = {
             "stateless_server": {
-                "url": f"{SERVER_URL}/mcp",
+                "url": MCP_ENDPOINT,
                 "transport": "streamable_http"  # Explicit transport
                 # No auth options needed for stateless
             }
@@ -218,7 +219,7 @@ async def test_auto_detection_connection(logger: Logger) -> bool:
         # Configure MCP servers for auto-detection
         mcp_servers: McpServersConfig = {
             "auto_stateless_server": {
-                "url": f"{SERVER_URL}/mcp"
+                "url": MCP_ENDPOINT
                 # No transport specified - should auto-detect Streamable HTTP
                 # No auth options needed
             }
@@ -274,7 +275,7 @@ async def test_concurrent_connections(logger: Logger) -> bool:
             """Create a single concurrent connection and test it."""
             mcp_servers: McpServersConfig = {
                 f"concurrent_{index}": {
-                    "url": f"{SERVER_URL}/mcp",
+                    "url": MCP_ENDPOINT,
                     "transport": "streamable_http"
                 }
             }

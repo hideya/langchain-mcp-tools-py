@@ -45,6 +45,10 @@ import random
 from datetime import datetime
 
 from mcp.server import FastMCP
+import uvicorn
+from starlette.applications import Starlette
+from starlette.responses import PlainTextResponse
+from starlette.routing import Mount, Route
 
 # Configuration
 PORT = 3335
@@ -101,8 +105,22 @@ if __name__ == "__main__":
     print_server_info()
     
     try:
-        # Run server with Streamable HTTP transport
-        mcp.run(transport="streamable-http", port=PORT)
+        # For stateless StreamableHTTP, use the official MCP SDK approach
+        # Get the streamable HTTP app from FastMCP
+        mcp_app = mcp.streamable_http_app()
+        
+        # Create a main Starlette app with health check endpoint
+        async def health_check(request):
+            return PlainTextResponse("MCP Streamable HTTP Stateless Test Server Running")
+        
+        # Create main app with both health check and MCP endpoints
+        app = Starlette(routes=[
+            Route("/", health_check, methods=["GET"]),
+            Mount("/mcp", mcp_app),
+        ])
+        
+        # Run with uvicorn
+        uvicorn.run(app, host="0.0.0.0", port=PORT)
     except KeyboardInterrupt:
         print("\nShutting down stateless server...")
         print("Stateless server stopped")
