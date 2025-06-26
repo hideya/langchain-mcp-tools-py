@@ -104,9 +104,9 @@ async def run() -> None:
                 # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
                 "transport": "streamable_http",
                 "url": "https://api.githubcopilot.com/mcp/",
-                # "headers": {
-                #     "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
-                # }
+                "headers": {
+                    "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+                }
             },
         }
 

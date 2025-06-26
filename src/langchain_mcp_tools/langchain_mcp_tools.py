@@ -47,6 +47,12 @@ class McpInitializationError(Exception):
     def __init__(self, message: str, server_name: str | None = None):
         self.server_name = server_name
         super().__init__(message)
+    
+    def __str__(self) -> str:
+        if self.server_name:
+            return f'MCP server "{self.server_name}": {super().__str__()}'
+        return super().__str__()
+
 
 class McpServerCommandBasedConfig(TypedDict):
     """Configuration for an MCP server launched via command line.
