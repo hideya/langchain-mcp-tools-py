@@ -180,6 +180,11 @@ Example:
             "url": "https://legacy.example.com/mcp/sse",
             "transport": "sse",
             "headers": {"Authorization": "Bearer token123"}
+        },
+        "vscode-style-config": {
+            "url": "https://api.example.com/mcp",
+            "type": "http",  # VSCode-style config compatibility
+            "headers": {"Authorization": "Bearer token123"}
         }
     }
 """
@@ -348,115 +353,63 @@ async def test_streamable_http_support(
             return False
         raise
 
-
-def validate_mcp_server_config(
+async def spawn_mcp_server_and_get_transport(
     server_name: str,
     server_config: SingleMcpServerConfig,
-    logger: logging.Logger
-) -> None:
-    """Validates MCP server configuration following TypeScript transport selection logic.
-    
-    Transport Selection Priority:
-    1. Explicit transport/type field (must match URL protocol if URL provided)
-    2. URL protocol auto-detection (http/https → StreamableHTTP, ws/wss → WebSocket)
-    3. Command presence → Stdio transport
-    4. Error if none of the above match
-    
-    Conflicts that cause errors:
-    - Both url and command specified
-    - transport/type doesn't match URL protocol
-    - transport requires URL but no URL provided
-    - transport requires command but no command provided
-    
+    exit_stack: AsyncExitStack,
+    logger: logging.Logger = logging.getLogger(__name__)
+) -> Transport:
+    """Spawns an MCP server process and establishes communication channels.
+
+    This function implements the MCP specification's backwards compatibility
+    recommendation: for HTTP URLs, try Streamable HTTP first with official
+    POST InitializeRequest testing, then fallback to SSE on 4xx errors.
+
+    Updated to follow official MCP specification (2025-03-26) for connection testing.
+
+    Supports multiple transport types:
+    - stdio: For local command-based servers
+    - streamable_http: For Streamable HTTP servers (tried first for HTTP URLs)
+    - sse: For Server-Sent Events HTTP servers (fallback for HTTP URLs)
+    - websocket: For WebSocket servers
+
     Args:
-        server_name: Server instance name for error messages
-        server_config: Configuration to validate
-        logger: Logger for warnings
-        
+        server_name: Server instance name to use for better logging
+        server_config: Configuration dictionary for server setup
+        exit_stack: Context manager for cleanup handling
+        logger: Logger instance for debugging and monitoring
+
+    Returns:
+        A tuple of receive and send streams for server communication
+
     Raises:
-        ValueError: If configuration is invalid
+        Exception: If server spawning fails
     """
-    has_url = "url" in server_config and server_config["url"] is not None
-    has_command = "command" in server_config and server_config["command"] is not None
-    
-    # Get transport type (prefer 'transport' over 'type' for compatibility)
-    transport_type = server_config.get("transport") or server_config.get("type")
-    
-    # Conflict check: Both url and command specified
-    if has_url and has_command:
-        raise ValueError(
-            f'MCP server "{server_name}": Cannot specify both "url" ({server_config["url"]}) '
-            f'and "command" ({server_config["command"]}). Use "url" for remote servers '
-            f'or "command" for local servers.'
-        )
-    
-    # Must have either URL or command
-    if not has_url and not has_command:
-        raise ValueError(
-            f'MCP server "{server_name}": Either "url" or "command" must be specified'
-        )
-    
-    if has_url:
-        url_str = str(server_config["url"])
-        try:
-            parsed_url = urlparse(url_str)
-            url_scheme = parsed_url.scheme.lower()
-        except Exception:
-            raise ValueError(
-                f'MCP server "{server_name}": Invalid URL format: {url_str}'
-            )
-        
-        if transport_type:
-            transport_lower = transport_type.lower()
-            
-            # Check transport/URL protocol compatibility
-            if transport_lower in ["http", "streamable_http"] and url_scheme not in ["http", "https"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "{transport_type}" requires '
-                    f'http:// or https:// URL, but got: {url_scheme}://'
-                )
-            elif transport_lower == "sse" and url_scheme not in ["http", "https"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "sse" requires '
-                    f'http:// or https:// URL, but got: {url_scheme}://'
-                )
-            elif transport_lower in ["ws", "websocket"] and url_scheme not in ["ws", "wss"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "{transport_type}" requires '
-                    f'ws:// or wss:// URL, but got: {url_scheme}://'
-                )
-            elif transport_lower == "stdio":
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "stdio" requires "command", '
-                    f'but "url" was provided'
-                )
-        
-        # Validate URL scheme is supported
-        if url_scheme not in ["http", "https", "ws", "wss"]:
-            raise ValueError(
-                f'MCP server "{server_name}": Unsupported URL scheme "{url_scheme}". '
-                f'Supported schemes: http, https, ws, wss'
-            )
-    
-    elif has_command:
-        if transport_type:
-            transport_lower = transport_type.lower()
-            
-            # Check transport requires command
-            if transport_lower == "stdio":
-                pass  # Valid
-            elif transport_lower in ["http", "streamable_http", "sse", "ws", "websocket"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "{transport_type}" requires "url", '
-                    f'but "command" was provided'
-                )
-            else:
-                logger.warning(
-                    f'MCP server "{server_name}": Unknown transport type "{transport_type}", '
-                    f'treating as stdio'
-                )
+    try:
+        logger.info(f'MCP server "{server_name}": '
+                    f"initializing with: {server_config}")
 
-
+        # Check if this is a URL-based configuration
+        url_str = str(server_config.get("url"))  # None becomes "None"
+        
+        if url_str != "None":  # URL-based configuration
+            url_config = cast(McpServerUrlBasedConfig, server_config)
+            url_scheme = urlparse(url_str).scheme
+            transport_type = url_config.get("transport", "").lower()
+            
+            # Extract common parameters
+            headers = url_config.get("headers", None)
+            timeout = url_config.get("timeout", None)
+            auth = url_config.get("auth", None)
+            
+            if url_scheme in ("http", "https"):
+                # HTTP/HTTPS: Apply MCP spec backwards compatibility logic
+                
+                if transport_type == "streamable_http":
+                    # Explicit Streamable HTTP (no fallback)
+                    logger.info(f'MCP server "{server_name}": '
+                               f"connecting via Streamable HTTP (explicit) to {url_str}")
+                    
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
     server_config: SingleMcpServerConfig,
@@ -652,6 +605,13 @@ async def spawn_mcp_server_and_get_transport(
             )
 
             # Initialize stdio client and register it with exit stack for cleanup
+            # NOTE: Why the key name `errlog` for `server_config` was chosen:
+            # Unlike TypeScript SDK's `StdioServerParameters`, the Python
+            # SDK's `StdioServerParameters` doesn't include `stderr: int`.
+            # Instead, it calls `stdio_client()` with a separate argument
+            # `errlog: TextIO`.  I once included `stderr: int` for
+            # compatibility with the TypeScript version, but decided to
+            # follow the Python SDK more closely.
             errlog_val = config.get("errlog")
             kwargs = {"errlog": errlog_val} if errlog_val is not None else {}
             transport = await exit_stack.enter_async_context(
@@ -667,6 +627,123 @@ async def spawn_mcp_server_and_get_transport(
             
     except Exception as e:
         logger.error(f'MCP server "{server_name}": error during initialization: {str(e)}')
+        raise
+
+    return transport
+                    logger.warning(f'MCP server "{server_name}": '
+                                  f"SSE transport is deprecated, consider migrating to streamable_http")
+                    
+                    transport = await exit_stack.enter_async_context(
+                        sse_client(url_str, headers=headers)
+                    )
+                    
+                else:
+                    # Auto-detection using official MCP specification approach
+                    logger.debug(f'MCP server "{server_name}": '
+                                f"auto-detecting transport using MCP specification method")
+                    
+                    # Test using official MCP spec approach
+                    try:
+                        logger.info(f'MCP server "{server_name}": '
+                                   f"testing Streamable HTTP support for {url_str}")
+                        
+                        supports_streamable = await test_streamable_http_support(
+                            url_str, 
+                            headers=headers,
+                            timeout=timeout,
+                            auth=auth,
+                            logger=logger
+                        )
+                        
+                        if supports_streamable:
+                            logger.info(f'MCP server "{server_name}": '
+                                       f"detected Streamable HTTP transport support")
+                            
+                            kwargs = {}
+                            if headers is not None:
+                                kwargs["headers"] = headers
+                            if timeout is not None:
+                                kwargs["timeout"] = timeout
+                            if auth is not None:
+                                kwargs["auth"] = auth
+                            
+                            transport = await exit_stack.enter_async_context(
+                                streamablehttp_client(url_str, **kwargs)
+                            )
+                        else:
+                            logger.info(f'MCP server "{server_name}": '
+                                       f"received 4xx error, falling back to SSE transport")
+                            logger.warning(f'MCP server "{server_name}": '
+                                          f"Using SSE transport (deprecated), server should support Streamable HTTP")
+                            
+                            transport = await exit_stack.enter_async_context(
+                                sse_client(url_str, headers=headers)
+                            )
+                            
+                    except Exception as error:
+                        logger.error(f'MCP server "{server_name}": '
+                                    f"transport detection failed: {error}")
+                        raise
+                            
+            elif url_scheme in ("ws", "wss"):
+                # WebSocket transport
+                logger.info(f'MCP server "{server_name}": '
+                           f"connecting via WebSocket to {url_str}")
+                
+                transport = await exit_stack.enter_async_context(
+                    websocket_client(url_str)
+                )
+                
+            else:
+                raise ValueError(
+                    f'Unsupported URL scheme "{url_scheme}" for server "{server_name}". '
+                    f'Supported URL schemes: http/https (for streamable_http/sse with auto-fallback), '
+                    f'ws/wss (for websocket).'
+                )
+        
+        else:
+            # Command-based configuration (stdio transport)
+            logger.info(f'MCP server "{server_name}": '
+                       f"spawning local process via stdio")
+            
+            # NOTE: `uv` and `npx` seem to require PATH to be set.
+            # To avoid confusion, it was decided to automatically append it
+            # to the env if not explicitly set by the config.
+            config = cast(McpServerCommandBasedConfig, server_config)
+            # env = config.get("env", {}) does't work since it can yield None
+            env_val = config.get("env")
+            env = {} if env_val is None else dict(env_val)
+            if "PATH" not in env:
+                env["PATH"] = os.environ.get("PATH", "")
+
+            # Use stdio client for commands
+            # args = config.get("args", []) does't work since it can yield None
+            args_val = config.get("args")
+            args = [] if args_val is None else list(args_val)
+            server_parameters = StdioServerParameters(
+                command=config.get("command", ""),
+                args=args,
+                env=env,
+                cwd=config.get("cwd", None)
+            )
+
+            # Initialize stdio client and register it with exit stack for
+            # cleanup
+            # NOTE: Why the key name `errlog` for `server_config` was chosen:
+            # Unlike TypeScript SDK's `StdioServerParameters`, the Python
+            # SDK's `StdioServerParameters` doesn't include `stderr: int`.
+            # Instead, it calls `stdio_client()` with a separate argument
+            # `errlog: TextIO`.  I once included `stderr: int` for
+            # compatibility with the TypeScript version, but decided to
+            # follow the Python SDK more closely.
+            errlog_val = (cast(McpServerCommandBasedConfig, server_config)
+                          .get("errlog"))
+            kwargs = {"errlog": errlog_val} if errlog_val is not None else {}
+            transport = await exit_stack.enter_async_context(
+                stdio_client(server_parameters, **kwargs)
+            )
+    except Exception as e:
+        logger.error(f"Error spawning MCP server: {str(e)}")
         raise
 
     return transport
@@ -871,22 +948,35 @@ async def convert_mcp_to_langchain_tools(
     server_configs: McpServersConfig,
     logger: logging.Logger | None = None
 ) -> tuple[list[BaseTool], McpServerCleanupFn]:
-    """Initialize multiple MCP servers and convert their tools to
-    LangChain format.
+    """Initialize multiple MCP servers and convert their tools to LangChain format.
 
     This async function manages parallel initialization of multiple MCP
     servers, converts their tools to LangChain format, and provides a cleanup
     mechanism. It orchestrates the full lifecycle of multiple servers.
 
-    Implements MCP specification backwards compatibility: for HTTP URLs,
-    automatically tries Streamable HTTP first, then falls back to SSE on 4xx 
+    Implements consistent transport selection logic matching TypeScript version:
+    
+    Transport Selection Priority:
+    1. Explicit transport/type field (must match URL protocol if URL provided)
+    2. URL protocol auto-detection (http/https → StreamableHTTP, ws/wss → WebSocket)
+    3. Command presence → Stdio transport
+    4. Error if none of the above match
+    
+    Conflicts that cause errors:
+    - Both url and command specified
+    - transport/type doesn't match URL protocol
+    - transport requires URL but no URL provided
+    - transport requires command but no command provided
+
+    For HTTP URLs without explicit transport, follows MCP specification backwards
+    compatibility: automatically tries Streamable HTTP first, then falls back to SSE on 4xx 
     errors for maximum server compatibility.
 
     Supports multiple transport types:
     - stdio: For local command-based servers
-    - streamable_http: For Streamable HTTP servers (tried first for HTTP URLs)
-    - sse: For Server-Sent Events HTTP servers (fallback for HTTP URLs)
-    - websocket: For WebSocket servers
+    - streamable_http, http: For Streamable HTTP servers
+    - sse: For Server-Sent Events HTTP servers (legacy)
+    - websocket, ws: For WebSocket servers
 
     Args:
         server_configs: Dictionary mapping server names to their
@@ -921,6 +1011,11 @@ async def convert_mcp_to_langchain_tools(
             "explicit-sse-server": {
                 "url": "https://legacy.example.com/mcp/sse",
                 "transport": "sse",
+                "headers": {"Authorization": "Bearer token123"}
+            },
+            "vscode-style-config": {
+                "url": "https://api.example.com/mcp",
+                "type": "http",  # VSCode-style config compatibility
                 "headers": {"Authorization": "Bearer token123"}
             }
         }
