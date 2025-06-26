@@ -98,16 +98,16 @@ async def run() -> None:
             #     # optionally `"transport": "ws"` or `"type": "ws"`
             # },
             
-            # Example of authentication via Authorization header
-            # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
-            "github": {
-                # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
-                "transport": "streamable_http",
-                "url": "https://api.githubcopilot.com/mcp/",
-                "headers": {
-                    "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
-                }
-            },
+            # # Example of authentication via Authorization header
+            # # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
+            # "github": {
+            #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
+            #     "transport": "streamable_http",
+            #     "url": "https://api.githubcopilot.com/mcp/",
+            #     "headers": {
+            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+            #     }
+            # },
         }
 
         # If you are interested in MCP server's stderr redirection,
