@@ -41,6 +41,13 @@ except ImportError as e:
     sys.exit(1)
 
 
+class McpInitializationError(Exception):
+    """Raised when MCP server initialization fails."""
+    
+    def __init__(self, message: str, server_name: str | None = None):
+        self.server_name = server_name
+        super().__init__(message)
+
 class McpServerCommandBasedConfig(TypedDict):
     """Configuration for an MCP server launched via command line.
 
@@ -435,7 +442,7 @@ def validate_mcp_server_config(
         logger: Logger for warnings
         
     Raises:
-        ValueError: If configuration is invalid
+        McpInitializationError: If configuration is invalid
     """
     has_url = "url" in server_config and server_config["url"] is not None
     has_command = "command" in server_config and server_config["command"] is not None
@@ -445,16 +452,18 @@ def validate_mcp_server_config(
     
     # Conflict check: Both url and command specified
     if has_url and has_command:
-        raise ValueError(
-            f'MCP server "{server_name}": Cannot specify both "url" ({server_config["url"]}) '
+        raise McpInitializationError(
+            f'Cannot specify both "url" ({server_config["url"]}) '
             f'and "command" ({server_config["command"]}). Use "url" for remote servers '
-            f'or "command" for local servers.'
+            f'or "command" for local servers.',
+            server_name=server_name
         )
     
     # Must have either URL or command
     if not has_url and not has_command:
-        raise ValueError(
-            f'MCP server "{server_name}": Either "url" or "command" must be specified'
+        raise McpInitializationError(
+            'Either "url" or "command" must be specified',
+            server_name=server_name
         )
     
     if has_url:
@@ -463,8 +472,9 @@ def validate_mcp_server_config(
             parsed_url = urlparse(url_str)
             url_scheme = parsed_url.scheme.lower()
         except Exception:
-            raise ValueError(
-                f'MCP server "{server_name}": Invalid URL format: {url_str}'
+            raise McpInitializationError(
+                f'Invalid URL format: {url_str}',
+                server_name=server_name
             )
         
         if transport_type:
@@ -472,31 +482,36 @@ def validate_mcp_server_config(
             
             # Check transport/URL protocol compatibility
             if transport_lower in ["http", "streamable_http"] and url_scheme not in ["http", "https"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "{transport_type}" requires '
-                    f'http:// or https:// URL, but got: {url_scheme}://'
+                raise McpInitializationError(
+                    f'Transport "{transport_type}" requires '
+                    f'http:// or https:// URL, but got: {url_scheme}://',
+                    server_name=server_name
                 )
             elif transport_lower == "sse" and url_scheme not in ["http", "https"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "sse" requires '
-                    f'http:// or https:// URL, but got: {url_scheme}://'
+                raise McpInitializationError(
+                    f'Transport "sse" requires '
+                    f'http:// or https:// URL, but got: {url_scheme}://',
+                    server_name=server_name
                 )
             elif transport_lower in ["ws", "websocket"] and url_scheme not in ["ws", "wss"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "{transport_type}" requires '
-                    f'ws:// or wss:// URL, but got: {url_scheme}://'
+                raise McpInitializationError(
+                    f'Transport "{transport_type}" requires '
+                    f'ws:// or wss:// URL, but got: {url_scheme}://',
+                    server_name=server_name
                 )
             elif transport_lower == "stdio":
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "stdio" requires "command", '
-                    f'but "url" was provided'
+                raise McpInitializationError(
+                    f'Transport "stdio" requires "command", '
+                    f'but "url" was provided',
+                    server_name=server_name
                 )
         
         # Validate URL scheme is supported
         if url_scheme not in ["http", "https", "ws", "wss"]:
-            raise ValueError(
-                f'MCP server "{server_name}": Unsupported URL scheme "{url_scheme}". '
-                f'Supported schemes: http, https, ws, wss'
+            raise McpInitializationError(
+                f'Unsupported URL scheme "{url_scheme}". '
+                f'Supported schemes: http, https, ws, wss',
+                server_name=server_name
             )
     
     elif has_command:
@@ -507,9 +522,10 @@ def validate_mcp_server_config(
             if transport_lower == "stdio":
                 pass  # Valid
             elif transport_lower in ["http", "streamable_http", "sse", "ws", "websocket"]:
-                raise ValueError(
-                    f'MCP server "{server_name}": Transport "{transport_type}" requires "url", '
-                    f'but "command" was provided'
+                raise McpInitializationError(
+                    f'Transport "{transport_type}" requires "url", '
+                    f'but "command" was provided',
+                    server_name=server_name
                 )
             else:
                 logger.warning(
@@ -553,7 +569,7 @@ async def connect_to_mcp_server(
         A tuple of receive and send streams for server communication
 
     Raises:
-        ValueError: If configuration is invalid
+        McpInitializationError: If configuration is invalid
         Exception: If server initialization fails
     """
     try:
@@ -597,7 +613,7 @@ async def connect_to_mcp_server(
                 
                 if not auth_valid:
                     # logger.error(f'MCP server "{server_name}": {auth_message}')
-                    raise ValueError(f'MCP server "{server_name}": {auth_message}')
+                    raise McpInitializationError(auth_message, server_name=server_name)
 
                 # Now proceed with the original connection logic
                 if transport_type and transport_type.lower() in ["streamable_http", "http"]:
@@ -692,9 +708,10 @@ async def connect_to_mcp_server(
                 
             else:
                 # This should be caught by validation, but include for safety
-                raise ValueError(
-                    f'MCP server "{server_name}": Unsupported URL scheme "{url_scheme}". '
-                    f'Supported schemes: http/https (for streamable_http/sse), ws/wss (for websocket)'
+                raise McpInitializationError(
+                    f'Unsupported URL scheme "{url_scheme}". '
+                    f'Supported schemes: http/https (for streamable_http/sse), ws/wss (for websocket)',
+                    server_name=server_name
                 )
                 
         elif has_command:
@@ -737,9 +754,10 @@ async def connect_to_mcp_server(
         
         else:
             # This should be caught by validation, but include for safety
-            raise ValueError(
-                f'MCP server "{server_name}": Invalid configuration - '
-                f'either "url" or "command" must be specified'
+            raise McpInitializationError(
+                'Invalid configuration - '
+                'either "url" or "command" must be specified',
+                server_name=server_name
             )
             
     except Exception as e:
@@ -776,7 +794,10 @@ async def get_mcp_server_tools(
         elif len(transport) == 3:
             read, write, _ = transport  # Third element is session info/metadata
         else:
-            raise ValueError(f"Unexpected transport tuple length: {len(transport)}")
+            raise McpInitializationError(
+                f"Unexpected transport tuple length: {len(transport)}",
+                server_name=server_name
+            )
 
         # Use an intermediate `asynccontextmanager` to log the cleanup message
         @asynccontextmanager
