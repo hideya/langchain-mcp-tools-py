@@ -613,6 +613,7 @@ async def spawn_mcp_server_and_get_transport(
         # Get transport type (prefer 'transport' over 'type')
         transport_type = server_config.get("transport") or server_config.get("type")
         
+        url_str = None  # Initialize for error handling
         if has_url:
             # URL-based configuration
             url_config = cast(McpServerUrlBasedConfig, server_config)
@@ -810,6 +811,12 @@ async def spawn_mcp_server_and_get_transport(
         # Re-raise our custom errors as-is since they're already formatted
         raise
     except Exception as e:
+        # Look for HTTPStatusError in the exception chain or ExceptionGroup
+        http_error = _extract_http_error(e)
+        if http_error:
+            logger.error(f'MCP server "{server_name}": {_format_http_error(http_error)}')
+            raise MCPConnectionError(server_name, http_error, url_str if has_url else None)
+        
         logger.error(f'MCP server "{server_name}": error during initialization: {str(e)}')
         raise MCPConnectionError(server_name, e)
 
