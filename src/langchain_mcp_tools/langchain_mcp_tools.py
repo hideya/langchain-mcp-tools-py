@@ -1,7 +1,9 @@
 # Standard library imports
+import asyncio
 import logging
 import os
 import sys
+import warnings
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import (
     Any,
@@ -137,8 +139,33 @@ async def suppress_anyio_cancellation_errors():
             pass
         else:
             raise
+    except asyncio.exceptions.CancelledError as e:
+        # Check if this is related to cancel scope cleanup
+        if "cancel scope" in str(e):
+            pass
+        else:
+            raise
+    except BaseExceptionGroup as e:
+        # Handle ExceptionGroup (Python 3.11+)
+        filtered_exceptions = []
+        for sub_error in e.exceptions:
+            # Filter out cancel scope and related errors
+            if isinstance(sub_error, RuntimeError) and "cancel scope" in str(sub_error) and "different task" in str(sub_error):
+                continue
+            elif isinstance(sub_error, asyncio.exceptions.CancelledError) and "cancel scope" in str(sub_error):
+                continue
+            else:
+                filtered_exceptions.append(sub_error)
+        
+        # If we have remaining exceptions, re-raise them
+        if filtered_exceptions:
+            if len(filtered_exceptions) == 1:
+                raise filtered_exceptions[0]
+            else:
+                # Re-create the ExceptionGroup with filtered exceptions
+                raise type(e)(f"{len(filtered_exceptions)} exceptions were raised", filtered_exceptions)
     except Exception as e:
-        # Check if this is wrapped in an ExceptionGroup
+        # Check if this is wrapped in an ExceptionGroup differently
         if hasattr(e, 'exceptions'):
             # Filter out the cancel scope errors
             filtered_exceptions = []
@@ -910,7 +937,8 @@ async def get_mcp_server_tools(
         )
 
         try:
-            await session.initialize()
+            async with suppress_anyio_cancellation_errors():
+                await session.initialize()
             logger.info(f'MCP server "{server_name}": connected')
         except Exception as e:
             # Check if it's already an MCPConnectionError, if so re-raise it
