@@ -537,6 +537,30 @@ def validate_mcp_server_config(
                 )
 
 
+def _extract_http_error(error: Exception) -> httpx.HTTPStatusError | None:
+    """Extract HTTP status error from complex exception chains."""
+    # Direct HTTP error
+    if isinstance(error, httpx.HTTPStatusError):
+        return error
+    
+    # Check for ExceptionGroup (Python 3.11+)
+    if hasattr(error, 'exceptions'):
+        for sub_error in error.exceptions:
+            http_error = _extract_http_error(sub_error)
+            if http_error:
+                return http_error
+    
+    # Check for __cause__ chain
+    if hasattr(error, '__cause__') and error.__cause__:
+        return _extract_http_error(error.__cause__)
+    
+    # Check for __context__ chain
+    if hasattr(error, '__context__') and error.__context__:
+        return _extract_http_error(error.__context__)
+    
+    return None
+
+
 async def spawn_mcp_server_and_get_transport(
     server_name: str,
     server_config: SingleMcpServerConfig,
@@ -846,6 +870,13 @@ async def get_mcp_server_tools(
             # Check if it's already an MCPConnectionError, if so re-raise it
             if isinstance(e, MCPConnectionError):
                 raise
+                
+            # Look for HTTPStatusError in the exception chain or ExceptionGroup
+            http_error = _extract_http_error(e)
+            if http_error:
+                logger.error(f'MCP server "{server_name}": {_format_http_error(http_error)}')
+                raise MCPConnectionError(server_name, http_error)
+                
             # For other errors during initialization, wrap them
             logger.error(f'MCP server "{server_name}": initialization failed - {str(e)}')
             raise MCPConnectionError(server_name, e)
