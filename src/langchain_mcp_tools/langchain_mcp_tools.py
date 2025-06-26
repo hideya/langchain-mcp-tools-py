@@ -457,13 +457,13 @@ def validate_mcp_server_config(
                 )
 
 
-async def spawn_mcp_server_and_get_transport(
+async def connect_to_mcp_server(
     server_name: str,
     server_config: SingleMcpServerConfig,
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> Transport:
-    """Spawns an MCP server process and establishes communication channels.
+    """Establishes a connection to an MCP server
 
     Implements consistent transport selection logic matching TypeScript version:
     
@@ -493,7 +493,7 @@ async def spawn_mcp_server_and_get_transport(
 
     Raises:
         ValueError: If configuration is invalid
-        Exception: If server spawning fails
+        Exception: If server initialization fails
     """
     try:
         logger.info(f'MCP server "{server_name}": '
@@ -628,7 +628,7 @@ async def spawn_mcp_server_and_get_transport(
                               f'but transport "{transport_type}" specified')
             
             logger.info(f'MCP server "{server_name}": '
-                       f"spawning local process via stdio")
+                        f"spawning local process via stdio")
             
             # NOTE: `uv` and `npx` seem to require PATH to be set.
             # To avoid confusion, it was decided to automatically append it
@@ -943,13 +943,14 @@ async def convert_mcp_to_langchain_tools(
     transports: list[Transport] = []
     async_exit_stack = AsyncExitStack()
 
-    # Spawn all MCP servers concurrently
+    # Initialize all MCP servers concurrently
     for server_name, server_config in server_configs.items():
-        # NOTE: the following `await` only blocks until the server subprocess
+        # NOTE for stdio MCP servers:
+        # the following `await` only blocks until the server subprocess
         # is spawned, i.e. after returning from the `await`, the spawned
         # subprocess starts its initialization independently of (so in
         # parallel with) the Python execution of the following lines.
-        transport = await spawn_mcp_server_and_get_transport(
+        transport = await connect_to_mcp_server(
             server_name,
             server_config,
             async_exit_stack,
