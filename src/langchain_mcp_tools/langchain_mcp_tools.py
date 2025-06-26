@@ -121,6 +121,43 @@ def _format_connection_error(error: Exception, url: str) -> str:
         return f"Connection error for '{url}': {str(error)}"
 
 
+@asynccontextmanager
+async def suppress_anyio_cancellation_errors():
+    """Suppress AnyIO cancellation errors that occur during MCP client cleanup.
+    
+    This is a workaround for a known issue in the MCP Python SDK where
+    async generators can trigger cancel scope errors during cleanup.
+    See: https://github.com/modelcontextprotocol/python-sdk/issues/521
+    """
+    try:
+        yield
+    except RuntimeError as e:
+        if "cancel scope" in str(e) and "different task" in str(e):
+            # This is the specific AnyIO error we want to suppress
+            pass
+        else:
+            raise
+    except Exception as e:
+        # Check if this is wrapped in an ExceptionGroup
+        if hasattr(e, 'exceptions'):
+            # Filter out the cancel scope errors
+            filtered_exceptions = []
+            for sub_error in e.exceptions:
+                if not (isinstance(sub_error, RuntimeError) and 
+                       "cancel scope" in str(sub_error) and 
+                       "different task" in str(sub_error)):
+                    filtered_exceptions.append(sub_error)
+            
+            # If we have remaining exceptions, re-raise them
+            if filtered_exceptions:
+                if len(filtered_exceptions) == 1:
+                    raise filtered_exceptions[0]
+                else:
+                    # Re-create the ExceptionGroup with filtered exceptions
+                    raise type(e)(f"{len(filtered_exceptions)} exceptions were raised", filtered_exceptions)
+        else:
+            raise
+
 class McpServerCommandBasedConfig(TypedDict):
     """Configuration for an MCP server launched via command line.
 
@@ -643,9 +680,10 @@ async def spawn_mcp_server_and_get_transport(
                         kwargs["auth"] = auth
                     
                     try:
-                        transport = await exit_stack.enter_async_context(
-                            streamablehttp_client(url_str, **kwargs)
-                        )
+                        async with suppress_anyio_cancellation_errors():
+                            transport = await exit_stack.enter_async_context(
+                                streamablehttp_client(url_str, **kwargs)
+                            )
                     except httpx.HTTPStatusError as e:
                         logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
                         raise MCPConnectionError(server_name, e, url_str)
@@ -701,9 +739,10 @@ async def spawn_mcp_server_and_get_transport(
                                 kwargs["auth"] = auth
                             
                             try:
-                                transport = await exit_stack.enter_async_context(
-                                    streamablehttp_client(url_str, **kwargs)
-                                )
+                                async with suppress_anyio_cancellation_errors():
+                                    transport = await exit_stack.enter_async_context(
+                                        streamablehttp_client(url_str, **kwargs)
+                                    )
                             except httpx.HTTPStatusError as e:
                                 logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
                                 raise MCPConnectionError(server_name, e, url_str)
@@ -1111,17 +1150,33 @@ async def convert_mcp_to_langchain_tools(
 
     # Spawn all MCP servers concurrently
     for server_name, server_config in server_configs.items():
-        # NOTE: the following `await` only blocks until the server subprocess
-        # is spawned, i.e. after returning from the `await`, the spawned
-        # subprocess starts its initialization independently of (so in
-        # parallel with) the Python execution of the following lines.
-        transport = await spawn_mcp_server_and_get_transport(
-            server_name,
-            server_config,
-            async_exit_stack,
-            logger
-        )
-        transports.append(transport)
+        try:
+            # NOTE: the following `await` only blocks until the server subprocess
+            # is spawned, i.e. after returning from the `await`, the spawned
+            # subprocess starts its initialization independently of (so in
+            # parallel with) the Python execution of the following lines.
+            transport = await spawn_mcp_server_and_get_transport(
+                server_name,
+                server_config,
+                async_exit_stack,
+                logger
+            )
+            transports.append(transport)
+        except MCPConnectionError as e:
+            # Clean error already formatted - just log and re-raise
+            logger.error(str(e))
+            raise
+        except Exception as e:
+            # Last resort: catch any unhandled errors and format them cleanly
+            http_error = _extract_http_error(e)
+            if http_error:
+                clean_message = f'MCP server "{server_name}": {_format_http_error(http_error)}'
+                logger.error(clean_message)
+                raise MCPConnectionError(server_name, http_error)
+            else:
+                clean_message = f'MCP server "{server_name}": Connection failed - {str(e)}'
+                logger.error(clean_message)
+                raise MCPConnectionError(server_name, e)
 
     # Convert tools from each server to LangChain format
     langchain_tools: list[BaseTool] = []
@@ -1130,13 +1185,29 @@ async def convert_mcp_to_langchain_tools(
         transports,
         strict=True
     ):
-        tools = await get_mcp_server_tools(
-            server_name,
-            transport,
-            async_exit_stack,
-            logger
-        )
-        langchain_tools.extend(tools)
+        try:
+            tools = await get_mcp_server_tools(
+                server_name,
+                transport,
+                async_exit_stack,
+                logger
+            )
+            langchain_tools.extend(tools)
+        except MCPConnectionError as e:
+            # Clean error already formatted - just log and re-raise
+            logger.error(str(e))
+            raise
+        except Exception as e:
+            # Last resort: catch any unhandled errors and format them cleanly
+            http_error = _extract_http_error(e)
+            if http_error:
+                clean_message = f'MCP server "{server_name}": {_format_http_error(http_error)}'
+                logger.error(clean_message)
+                raise MCPConnectionError(server_name, http_error)
+            else:
+                clean_message = f'MCP server "{server_name}": Session initialization failed - {str(e)}'
+                logger.error(clean_message)
+                raise MCPConnectionError(server_name, e)
 
     # Define a cleanup function to properly shut down all servers
     async def mcp_cleanup() -> None:
