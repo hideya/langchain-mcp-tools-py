@@ -41,6 +41,86 @@ except ImportError as e:
     sys.exit(1)
 
 
+class MCPConnectionError(Exception):
+    """Exception raised when MCP server connection fails."""
+    
+    def __init__(self, server_name: str, original_error: Exception, url: str | None = None):
+        self.server_name = server_name
+        self.original_error = original_error
+        self.url = url
+        
+        if isinstance(original_error, httpx.HTTPStatusError):
+            status_code = original_error.response.status_code
+            reason_phrase = original_error.response.reason_phrase
+            request_url = str(original_error.request.url)
+            
+            if status_code == 401:
+                self.message = (
+                    f"MCP server '{server_name}': Authentication required. "
+                    f"401 Unauthorized for url '{request_url}'. "
+                    f"Please check your authentication credentials."
+                )
+            elif status_code == 403:
+                self.message = (
+                    f"MCP server '{server_name}': Access forbidden. "
+                    f"403 Forbidden for url '{request_url}'. "
+                    f"Please check your permissions."
+                )
+            elif status_code == 404:
+                self.message = (
+                    f"MCP server '{server_name}': Server not found. "
+                    f"404 Not Found for url '{request_url}'. "
+                    f"Please check the server URL."
+                )
+            else:
+                self.message = (
+                    f"MCP server '{server_name}': HTTP {status_code} {reason_phrase} "
+                    f"for url '{request_url}'"
+                )
+        elif isinstance(original_error, httpx.ConnectError):
+            self.message = (
+                f"MCP server '{server_name}': Connection failed. "
+                f"Unable to connect to {url or 'server'}. "
+                f"Please check if the server is running and the URL is correct."
+            )
+        elif isinstance(original_error, httpx.TimeoutException):
+            self.message = (
+                f"MCP server '{server_name}': Connection timeout. "
+                f"Request to {url or 'server'} timed out. "
+                f"Please check your network connection or increase the timeout."
+            )
+        else:
+            self.message = f"MCP server '{server_name}': Connection failed - {str(original_error)}"
+        
+        super().__init__(self.message)
+
+
+def _format_http_error(error: httpx.HTTPStatusError) -> str:
+    """Format HTTP errors in a user-friendly way."""
+    status_code = error.response.status_code
+    reason_phrase = error.response.reason_phrase
+    url = str(error.request.url)
+    
+    if status_code == 401:
+        return f"Authentication required. 401 Unauthorized for url '{url}'"
+    elif status_code == 403:
+        return f"Access forbidden. 403 Forbidden for url '{url}'"
+    elif status_code == 404:
+        return f"Server not found. 404 Not Found for url '{url}'"
+    else:
+        return f"HTTP {status_code} {reason_phrase} for url '{url}'"
+
+
+def _format_connection_error(error: Exception, url: str) -> str:
+    """Format connection errors in a user-friendly way."""
+    if isinstance(error, httpx.ConnectError):
+        return f"Connection failed. Unable to connect to '{url}'"
+    elif isinstance(error, httpx.TimeoutException):
+        return f"Connection timeout. Request to '{url}' timed out"
+    else:
+        return f"Connection error for '{url}': {str(error)}"
+
+
 class McpServerCommandBasedConfig(TypedDict):
     """Configuration for an MCP server launched via command line.
 
@@ -537,9 +617,16 @@ async def spawn_mcp_server_and_get_transport(
                     if auth is not None:
                         kwargs["auth"] = auth
                     
-                    transport = await exit_stack.enter_async_context(
-                        streamablehttp_client(url_str, **kwargs)
-                    )
+                    try:
+                        transport = await exit_stack.enter_async_context(
+                            streamablehttp_client(url_str, **kwargs)
+                        )
+                    except httpx.HTTPStatusError as e:
+                        logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
+                        raise MCPConnectionError(server_name, e, url_str)
+                    except (httpx.ConnectError, httpx.TimeoutException) as e:
+                        logger.error(f'MCP server "{server_name}": {_format_connection_error(e, url_str)}')
+                        raise MCPConnectionError(server_name, e, url_str)
                     
                 elif transport_type and transport_type.lower() == "sse":
                     # Explicit SSE (no fallback)
@@ -548,9 +635,16 @@ async def spawn_mcp_server_and_get_transport(
                     logger.warning(f'MCP server "{server_name}": '
                                   f"SSE transport is deprecated, consider migrating to streamable_http")
                     
-                    transport = await exit_stack.enter_async_context(
-                        sse_client(url_str, headers=headers)
-                    )
+                    try:
+                        transport = await exit_stack.enter_async_context(
+                            sse_client(url_str, headers=headers)
+                        )
+                    except httpx.HTTPStatusError as e:
+                        logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
+                        raise MCPConnectionError(server_name, e, url_str)
+                    except (httpx.ConnectError, httpx.TimeoutException) as e:
+                        logger.error(f'MCP server "{server_name}": {_format_connection_error(e, url_str)}')
+                        raise MCPConnectionError(server_name, e, url_str)
                     
                 else:
                     # Auto-detection: URL protocol suggests HTTP transport, try Streamable HTTP first
@@ -581,18 +675,32 @@ async def spawn_mcp_server_and_get_transport(
                             if auth is not None:
                                 kwargs["auth"] = auth
                             
-                            transport = await exit_stack.enter_async_context(
-                                streamablehttp_client(url_str, **kwargs)
-                            )
+                            try:
+                                transport = await exit_stack.enter_async_context(
+                                    streamablehttp_client(url_str, **kwargs)
+                                )
+                            except httpx.HTTPStatusError as e:
+                                logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
+                                raise MCPConnectionError(server_name, e, url_str)
+                            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                                logger.error(f'MCP server "{server_name}": {_format_connection_error(e, url_str)}')
+                                raise MCPConnectionError(server_name, e, url_str)
                         else:
                             logger.info(f'MCP server "{server_name}": '
                                        f"received 4xx error, falling back to SSE transport")
                             logger.warning(f'MCP server "{server_name}": '
                                           f"Using SSE transport (deprecated), server should support Streamable HTTP")
                             
-                            transport = await exit_stack.enter_async_context(
-                                sse_client(url_str, headers=headers)
-                            )
+                            try:
+                                transport = await exit_stack.enter_async_context(
+                                    sse_client(url_str, headers=headers)
+                                )
+                            except httpx.HTTPStatusError as e:
+                                logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
+                                raise MCPConnectionError(server_name, e, url_str)
+                            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                                logger.error(f'MCP server "{server_name}": {_format_connection_error(e, url_str)}')
+                                raise MCPConnectionError(server_name, e, url_str)
                             
                     except Exception as error:
                         logger.error(f'MCP server "{server_name}": '
@@ -609,9 +717,18 @@ async def spawn_mcp_server_and_get_transport(
                 logger.info(f'MCP server "{server_name}": '
                            f"connecting via WebSocket to {url_str}")
                 
-                transport = await exit_stack.enter_async_context(
-                    websocket_client(url_str)
-                )
+                try:
+                    transport = await exit_stack.enter_async_context(
+                        websocket_client(url_str)
+                    )
+                except Exception as e:
+                    if isinstance(e, httpx.HTTPStatusError):
+                        logger.error(f'MCP server "{server_name}": {_format_http_error(e)}')
+                    elif isinstance(e, (httpx.ConnectError, httpx.TimeoutException)):
+                        logger.error(f'MCP server "{server_name}": {_format_connection_error(e, url_str)}')
+                    else:
+                        logger.error(f'MCP server "{server_name}": WebSocket connection failed - {str(e)}')
+                    raise MCPConnectionError(server_name, e, url_str)
                 
             else:
                 # This should be caught by validation, but include for safety
@@ -665,9 +782,12 @@ async def spawn_mcp_server_and_get_transport(
                 f'either "url" or "command" must be specified'
             )
             
+    except MCPConnectionError:
+        # Re-raise our custom errors as-is since they're already formatted
+        raise
     except Exception as e:
         logger.error(f'MCP server "{server_name}": error during initialization: {str(e)}')
-        raise
+        raise MCPConnectionError(server_name, e)
 
     return transport
 
@@ -719,8 +839,16 @@ async def get_mcp_server_tools(
             )
         )
 
-        await session.initialize()
-        logger.info(f'MCP server "{server_name}": connected')
+        try:
+            await session.initialize()
+            logger.info(f'MCP server "{server_name}": connected')
+        except Exception as e:
+            # Check if it's already an MCPConnectionError, if so re-raise it
+            if isinstance(e, MCPConnectionError):
+                raise
+            # For other errors during initialization, wrap them
+            logger.error(f'MCP server "{server_name}": initialization failed - {str(e)}')
+            raise MCPConnectionError(server_name, e)
 
         # Get MCP tools
         tools_response = await session.list_tools()
