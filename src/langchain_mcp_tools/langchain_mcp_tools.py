@@ -259,6 +259,67 @@ def is_4xx_error(error: Exception) -> bool:
     ])
 
 
+async def validate_auth_before_connection(
+    url_str: str, 
+    headers: dict[str, str] | None = None, 
+    timeout: float = 30.0,
+    auth: httpx.Auth | None = None,
+    logger: logging.Logger = logging.getLogger(__name__)
+) -> tuple[bool, str]:
+    """Pre-validate authentication with a simple HTTP request before creating MCP connection."""
+    
+    # Create InitializeRequest as per MCP specification (similar to test_streamable_http_support)
+    init_request = {
+        "jsonrpc": "2.0",
+        "id": f"auth-test-{int(time.time() * 1000)}",
+        "method": "initialize", 
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {
+                "name": "mcp-auth-test",
+                "version": "1.0.0"
+            }
+        }
+    }
+    
+    # Required headers per MCP specification
+    request_headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
+    }
+    if headers:
+        request_headers.update(headers)
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            logger.debug(f"Pre-validating authentication for: {url_str}")
+            response = await client.post(
+                url_str,
+                json=init_request,
+                headers=request_headers,
+                timeout=timeout,
+                auth=auth
+            )
+            
+            if response.status_code == 401:
+                return False, f"Authentication failed (401 Unauthorized): {response.text if hasattr(response, 'text') else 'Unknown error'}"
+            elif response.status_code == 403:
+                return False, f"Authentication failed (403 Forbidden): {response.text if hasattr(response, 'text') else 'Unknown error'}"
+            elif 400 <= response.status_code:
+                return False, f"Server error ({response.status_code}): {response.text if hasattr(response, 'text') else 'Unknown error'}"
+            
+            logger.debug(f"Authentication validation successful: {response.status_code}")
+            return True, "Authentication validated successfully"
+            
+    except httpx.HTTPStatusError as e:
+        return False, f"HTTP Error ({e.response.status_code}): {e}"
+    except (httpx.ConnectError, httpx.TimeoutException) as e:
+        return False, f"Connection failed: {e}"
+    except Exception as e:
+        return False, f"Unexpected error during auth validation: {e}"
+
+
 async def test_streamable_http_support(
     url: str, 
     headers: dict[str, str] | None = None,
@@ -523,7 +584,24 @@ async def connect_to_mcp_server(
             
             if url_scheme in ["http", "https"]:
                 # HTTP/HTTPS: Handle explicit transport or auto-detection
+
+                # Pre-validate authentication to avoid MCP async generator cleanup bugs
+                logger.debug(f'MCP server "{server_name}": Pre-validating authentication')
+                auth_valid, auth_message = await validate_auth_before_connection(
+                    url_str,
+                    headers=headers, 
+                    timeout=timeout or 30.0,
+                    auth=auth,
+                    logger=logger
+                )
                 
+                if not auth_valid:
+                    logger.error(f'MCP server "{server_name}": {auth_message}')
+                    raise ValueError(f'MCP server "{server_name}": {auth_message}')
+                
+                logger.info(f'MCP server "{server_name}": Authentication pre-validation successful')
+                
+                # Now proceed with the original connection logic
                 if transport_type and transport_type.lower() in ["streamable_http", "http"]:
                     # Explicit Streamable HTTP (no fallback)
                     logger.info(f'MCP server "{server_name}": '
@@ -537,21 +615,9 @@ async def connect_to_mcp_server(
                     if auth is not None:
                         kwargs["auth"] = auth
                     
-                    # Create the client context manager first
-                    client_cm = streamablehttp_client(url_str, **kwargs)
-                    
-                    try:
-                        # Now try to enter it and register with exit_stack
-                        transport = await exit_stack.enter_async_context(client_cm)
-                    except httpx.HTTPStatusError as e:
-                        if e.response.status_code == 401:
-                            raise ValueError(f'MCP server "{server_name}": Authentication failed (401 Unauthorized). Please check your authorization headers.') from e
-                        elif 400 <= e.response.status_code < 500:
-                            raise ValueError(f'MCP server "{server_name}": Client error ({e.response.status_code}): {str(e)}') from e
-                        else:
-                            raise
-                    except (httpx.ConnectError, httpx.TimeoutException) as e:
-                        raise ValueError(f'MCP server "{server_name}": Connection failed: {str(e)}') from e
+                    transport = await exit_stack.enter_async_context(
+                        streamablehttp_client(url_str, **kwargs)
+                    )
                     
                 elif transport_type and transport_type.lower() == "sse":
                     # Explicit SSE (no fallback)
@@ -593,21 +659,9 @@ async def connect_to_mcp_server(
                             if auth is not None:
                                 kwargs["auth"] = auth
                             
-                            # Create the client context manager first
-                            client_cm = streamablehttp_client(url_str, **kwargs)
-                            
-                            try:
-                                # Now try to enter it and register with exit_stack
-                                transport = await exit_stack.enter_async_context(client_cm)
-                            except httpx.HTTPStatusError as e:
-                                if e.response.status_code == 401:
-                                    raise ValueError(f'MCP server "{server_name}": Authentication failed (401 Unauthorized). Please check your authorization headers.') from e
-                                elif 400 <= e.response.status_code < 500:
-                                    raise ValueError(f'MCP server "{server_name}": Client error ({e.response.status_code}): {str(e)}') from e
-                                else:
-                                    raise
-                            except (httpx.ConnectError, httpx.TimeoutException) as e:
-                                raise ValueError(f'MCP server "{server_name}": Connection failed: {str(e)}') from e
+                            transport = await exit_stack.enter_async_context(
+                                streamablehttp_client(url_str, **kwargs)
+                            )
 
                         else:
                             logger.info(f'MCP server "{server_name}": '
