@@ -2,8 +2,14 @@
 """
 Simple OAuth MCP Test Server
 
-This server implements a minimal OAuth 2.0 authorization server for testing
+This server implements a minimal OAuth 2.1-compliant authorization server for testing
 your langchain-mcp-tools library's auth parameter support.
+
+This implementation follows OAuth 2.1 security best practices including:
+- PKCE (Proof Key for Code Exchange) support
+- Short-lived access tokens with refresh tokens
+- Secure authorization code flow only
+- No deprecated grant types (implicit, password)
 
 This is a simplified version that focuses on testing the OAuth flow
 rather than implementing a production-ready OAuth server.
@@ -70,18 +76,24 @@ def get_user_profile() -> str:
     """Get user profile information."""
     return "User profile: John Doe, john@example.com, Premium Account (OAuth authenticated)"
 
-# OAuth Authorization Server Endpoints
+# OAuth 2.1-Compliant Authorization Server Endpoints
 
 @app.get("/.well-known/oauth-authorization-server")
 async def authorization_server_metadata():
-    """OAuth 2.0 Authorization Server Metadata (RFC 8414)."""
+    """OAuth 2.1-compliant Authorization Server Metadata (RFC 8414).
+    
+    This metadata indicates OAuth 2.1 compliance through:
+    - PKCE support (code_challenge_methods_supported: S256)
+    - Secure grant types only (no implicit, password grants)
+    - Authorization code flow with refresh tokens
+    """
     return {
         "issuer": "http://localhost:8003",
         "authorization_endpoint": "http://localhost:8003/authorize",
         "token_endpoint": "http://localhost:8003/token",
-        "response_types_supported": ["code"],
-        "grant_types_supported": ["authorization_code", "refresh_token"],
-        "code_challenge_methods_supported": ["S256"],
+        "response_types_supported": ["code"],  # OAuth 2.1: code flow only
+        "grant_types_supported": ["authorization_code", "refresh_token"],  # OAuth 2.1: secure grants only
+        "code_challenge_methods_supported": ["S256"],  # OAuth 2.1: PKCE support
         "scopes_supported": ["read", "write"],
         "token_endpoint_auth_methods_supported": ["client_secret_post"]
     }
@@ -228,7 +240,7 @@ app.mount("/mcp", mcp.streamable_http_app())
 async def root():
     """Server information."""
     return {
-        "name": "Simple OAuth MCP Test Server",
+        "name": "OAuth 2.1-compliant MCP Test Server",
         "oauth_endpoints": {
             "authorization": "/authorize",
             "token": "/token",
@@ -248,8 +260,9 @@ async def health_check():
     return {"status": "healthy", "auth": "oauth2"}
 
 if __name__ == "__main__":
-    print("🚀 Starting Simple OAuth MCP Test Server")
-    print("🔐 Authentication: OAuth 2.0")
+    print("🚀 Starting OAuth 2.1-Compliant MCP Test Server")
+    print("🔐 Authentication: OAuth 2.1-compliant (OAuth 2.0 + PKCE)")
+    print("🔒 Security Features: PKCE required, secure grants only, short-lived tokens")
     print("🔗 MCP Endpoint: http://localhost:8003/mcp")
     print("🔑 OAuth Endpoints:")
     print("  • Authorization: http://localhost:8003/authorize")

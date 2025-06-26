@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Test Client for OAuth Authentication
+Test Client for OAuth 2.1-Compliant Authentication
 
 This script tests your langchain-mcp-tools library's auth parameter support
-with OAuth 2.0 authentication against the simple OAuth server.
+with OAuth 2.1-compliant authentication (OAuth 2.0 + PKCE) against the simple OAuth server.
 
 This demonstrates how your library should work with the auth parameter
-that accepts an OAuthClientProvider.
+that accepts an OAuthClientProvider following OAuth 2.1 security best practices.
 
 Usage:
     # First start the OAuth server:
@@ -154,8 +154,8 @@ class CallbackServer:
         return self.callback_data["state"]
 
 async def test_oauth_authentication():
-    """Test OAuth authentication with your library."""
-    print("🔐 Testing OAuth Authentication with langchain-mcp-tools")
+    """Test OAuth 2.1-compliant authentication with your library."""
+    print("🔐 Testing OAuth 2.1-Compliant Authentication with langchain-mcp-tools")
     print("=" * 70)
     
     # Set up callback server
@@ -320,11 +320,11 @@ async def test_mixed_auth_with_oauth():
     print("  • Multiple auth methods in one config")
 
 async def main():
-    """Run all OAuth tests."""
-    print("🧪 OAuth Authentication Tests for langchain-mcp-tools")
+    """Run all OAuth 2.1-compliant tests."""
+    print("🧪 OAuth 2.1-Compliant Authentication Tests for langchain-mcp-tools")
     print("=" * 80)
     print("Prerequisites:")
-    print("  • simple_oauth_server.py running on port 8003")
+    print("  • simple_oauth_server.py (OAuth 2.1-compliant) running on port 8003")
     print("=" * 80)
     
     await test_oauth_authentication()
@@ -333,7 +333,7 @@ async def main():
     
     print("\n🎉 All OAuth Tests Completed!")
     print("\n📊 Summary of what was tested:")
-    print("  ✅ OAuth 2.0 authorization code flow")
+    print("  ✅ OAuth 2.1-compliant authorization code flow with PKCE")
     print("  ✅ OAuth client provider integration") 
     print("  ✅ Browser-based authorization flow")
     print("  ✅ Access token usage for MCP requests")
