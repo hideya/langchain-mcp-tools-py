@@ -537,9 +537,19 @@ async def connect_to_mcp_server(
                     if auth is not None:
                         kwargs["auth"] = auth
                     
-                    transport = await exit_stack.enter_async_context(
-                        streamablehttp_client(url_str, **kwargs)
-                    )
+                    try:
+                        transport = await exit_stack.enter_async_context(
+                            streamablehttp_client(url_str, **kwargs)
+                        )
+                    except httpx.HTTPStatusError as e:
+                        if e.response.status_code == 401:
+                            raise ValueError(f'MCP server "{server_name}": Authentication failed (401 Unauthorized). Please check your authorization headers.') from e
+                        elif 400 <= e.response.status_code < 500:
+                            raise ValueError(f'MCP server "{server_name}": Client error ({e.response.status_code}): {str(e)}') from e
+                        else:
+                            raise
+                    except (httpx.ConnectError, httpx.TimeoutException) as e:
+                        raise ValueError(f'MCP server "{server_name}": Connection failed: {str(e)}') from e
                     
                 elif transport_type and transport_type.lower() == "sse":
                     # Explicit SSE (no fallback)
@@ -581,9 +591,20 @@ async def connect_to_mcp_server(
                             if auth is not None:
                                 kwargs["auth"] = auth
                             
-                            transport = await exit_stack.enter_async_context(
-                                streamablehttp_client(url_str, **kwargs)
-                            )
+                            try:
+                                transport = await exit_stack.enter_async_context(
+                                    streamablehttp_client(url_str, **kwargs)
+                                )
+                            except httpx.HTTPStatusError as e:
+                                if e.response.status_code == 401:
+                                    raise ValueError(f'MCP server "{server_name}": Authentication failed (401 Unauthorized). Please check your authorization headers.') from e
+                                elif 400 <= e.response.status_code < 500:
+                                    raise ValueError(f'MCP server "{server_name}": Client error ({e.response.status_code}): {str(e)}') from e
+                                else:
+                                    raise
+                            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                                raise ValueError(f'MCP server "{server_name}": Connection failed: {str(e)}') from e
+
                         else:
                             logger.info(f'MCP server "{server_name}": '
                                        f"received 4xx error, falling back to SSE transport")
