@@ -537,10 +537,12 @@ async def connect_to_mcp_server(
                     if auth is not None:
                         kwargs["auth"] = auth
                     
+                    # Create the client context manager first
+                    client_cm = streamablehttp_client(url_str, **kwargs)
+                    
                     try:
-                        transport = await exit_stack.enter_async_context(
-                            streamablehttp_client(url_str, **kwargs)
-                        )
+                        # Now try to enter it and register with exit_stack
+                        transport = await exit_stack.enter_async_context(client_cm)
                     except httpx.HTTPStatusError as e:
                         if e.response.status_code == 401:
                             raise ValueError(f'MCP server "{server_name}": Authentication failed (401 Unauthorized). Please check your authorization headers.') from e
@@ -591,10 +593,12 @@ async def connect_to_mcp_server(
                             if auth is not None:
                                 kwargs["auth"] = auth
                             
+                            # Create the client context manager first
+                            client_cm = streamablehttp_client(url_str, **kwargs)
+                            
                             try:
-                                transport = await exit_stack.enter_async_context(
-                                    streamablehttp_client(url_str, **kwargs)
-                                )
+                                # Now try to enter it and register with exit_stack
+                                transport = await exit_stack.enter_async_context(client_cm)
                             except httpx.HTTPStatusError as e:
                                 if e.response.status_code == 401:
                                     raise ValueError(f'MCP server "{server_name}": Authentication failed (401 Unauthorized). Please check your authorization headers.') from e
