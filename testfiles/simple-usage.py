@@ -104,9 +104,9 @@ async def run() -> None:
                 # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
                 "transport": "streamable_http",
                 "url": "https://api.githubcopilot.com/mcp/",
-                "headers": {
-                    "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
-                }
+                # "headers": {
+                #     "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+                # }
             },
         }
 
@@ -177,7 +177,7 @@ async def run() -> None:
         print("\x1b[0m")   # reset the color
 
     finally:
-        if cleanup is not None:
+        if "cleanup" in locals():
             await cleanup()
 
         # the following only needed when testing the `errlog` key
