@@ -40,8 +40,8 @@ async def run() -> None:
     # one of the following code snippets and one of the appropriate "weather"
     # server configurations, while commenting out the others.
 
-    # sse_server_process, sse_server_port = start_remote_mcp_server_locally(
-    #     "SSE", "npx -y @h1deya/mcp-server-weather")
+    sse_server_process, sse_server_port = start_remote_mcp_server_locally(
+        "SSE", "npx -y @h1deya/mcp-server-weather")
 
     # ws_server_process, ws_server_port = start_remote_mcp_server_locally(
     #     "WS", "npx -y @h1deya/mcp-server-weather")
@@ -75,10 +75,10 @@ async def run() -> None:
             #     ]
             # },
 
-            # # Auto-detection example: This will try Streamable HTTP first, then fallback to SSE
-            # "weather": {
-            #     "url": f"http://localhost:{sse_server_port}/sse"
-            # },
+            # Auto-detection example: This will try Streamable HTTP first, then fallback to SSE
+            "weather": {
+                "url": f"http://localhost:{sse_server_port}/sse"
+            },
             
             # # THIS DOESN'T WORK: Example of explicit transport selection:
             # "weather": {

@@ -304,13 +304,13 @@ async def validate_auth_before_connection(
             
             if response.status_code == 401:
                 return False, f"Authentication failed (401 Unauthorized): {response.text if hasattr(response, 'text') else 'Unknown error'}"
+            elif response.status_code == 402:
+                return False, f"Authentication failed (402 Payment Required): {response.text if hasattr(response, 'text') else 'Unknown error'}"
             elif response.status_code == 403:
                 return False, f"Authentication failed (403 Forbidden): {response.text if hasattr(response, 'text') else 'Unknown error'}"
-            elif 400 <= response.status_code:
-                return False, f"Server error ({response.status_code}): {response.text if hasattr(response, 'text') else 'Unknown error'}"
-            
-            logger.debug(f"Authentication validation successful: {response.status_code}")
-            return True, "Authentication validated successfully"
+
+            logger.info(f"Authentication validation passed: {response.status_code}")
+            return True, "Authentication validation passed"
             
     except httpx.HTTPStatusError as e:
         return False, f"HTTP Error ({e.response.status_code}): {e}"
@@ -586,7 +586,7 @@ async def connect_to_mcp_server(
                 # HTTP/HTTPS: Handle explicit transport or auto-detection
 
                 # Pre-validate authentication to avoid MCP async generator cleanup bugs
-                logger.debug(f'MCP server "{server_name}": Pre-validating authentication')
+                logger.info(f'MCP server "{server_name}": Pre-validating authentication')
                 auth_valid, auth_message = await validate_auth_before_connection(
                     url_str,
                     headers=headers, 
@@ -596,11 +596,9 @@ async def connect_to_mcp_server(
                 )
                 
                 if not auth_valid:
-                    logger.error(f'MCP server "{server_name}": {auth_message}')
+                    # logger.error(f'MCP server "{server_name}": {auth_message}')
                     raise ValueError(f'MCP server "{server_name}": {auth_message}')
-                
-                logger.info(f'MCP server "{server_name}": Authentication pre-validation successful')
-                
+
                 # Now proceed with the original connection logic
                 if transport_type and transport_type.lower() in ["streamable_http", "http"]:
                     # Explicit Streamable HTTP (no fallback)
