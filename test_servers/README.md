@@ -69,6 +69,54 @@ python multi_server_fastapi.py     # Start multi-server
 python curl_test_multi.py          # Test all endpoints
 ```
 
+### 6. `simple_bearer_auth_server.py`
+MCP server with bearer token authentication:
+- **Authentication**: `Authorization: Bearer <token>` header
+- **Endpoint**: `http://localhost:8001/mcp`
+- **Test tokens**: `valid-token-123`, `read-only-token`, `expired-token`, etc.
+- **Purpose**: Test your library's `headers` authentication support
+
+**Usage:**
+```bash
+python simple_bearer_auth_server.py  # Start auth server
+python test_auth_client.py           # Test auth scenarios
+```
+
+### 7. `api_key_auth_server.py`
+MCP server with API key authentication:
+- **Authentication**: `X-API-Key: <key>` header
+- **Endpoint**: `http://localhost:8002/mcp`
+- **Test keys**: `sk-test-key-123`, `sk-demo-key-456`, etc.
+- **Features**: Rate limiting, different user plans
+
+**Usage:**
+```bash
+python api_key_auth_server.py        # Start API key auth server
+```
+
+### 8. `test_auth_client.py`
+Basic authentication test client:
+- Tests bearer token authentication
+- Tests various auth scenarios (valid/invalid/missing)
+- Validates tool execution with auth
+
+### 9. `test_comprehensive_auth.py`
+Comprehensive authentication test suite:
+- Tests bearer token + API key authentication
+- Tests mixed authentication servers
+- Tests custom headers functionality
+- Tests edge cases and error scenarios
+
+**Usage:**
+```bash
+# Start both auth servers:
+python simple_bearer_auth_server.py  # Port 8001
+python api_key_auth_server.py        # Port 8002
+
+# Run comprehensive tests:
+python test_comprehensive_auth.py
+```
+
 ## Testing Your Implementation
 
 1. **Start a test server:**
@@ -95,6 +143,18 @@ python curl_test_multi.py          # Test all endpoints
 3. **Test with your library:**
    ```bash
    python test_client.py
+   ```
+
+4. **Test authentication:**
+   ```bash
+   # Basic auth test:
+   python simple_bearer_auth_server.py  # Terminal 1
+   python test_auth_client.py           # Terminal 2
+   
+   # Comprehensive auth test:
+   python simple_bearer_auth_server.py  # Terminal 1 (port 8001)
+   python api_key_auth_server.py        # Terminal 2 (port 8002)
+   python test_comprehensive_auth.py    # Terminal 3
    ```
 
 ## Expected Behavior
