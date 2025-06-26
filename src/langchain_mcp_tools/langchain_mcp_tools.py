@@ -216,8 +216,9 @@ def fix_schema(schema: dict) -> dict:
     return schema
 
 
-# Type alias for the bidirectional communication channels with the MCP server
-# FIXME: not defined in mcp.types, really?
+# Type alias for bidirectional communication channels with MCP servers
+# Note: This type is not officially exported by mcp.types but represents
+# the standard transport interface used by all MCP client implementations
 Transport: TypeAlias = tuple[
     MemoryObjectReceiveStream[mcp_types.JSONRPCMessage | Exception],
     MemoryObjectSendStream[mcp_types.JSONRPCMessage]
@@ -279,7 +280,30 @@ async def validate_auth_before_connection(
     auth: httpx.Auth | None = None,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> tuple[bool, str]:
-    """Pre-validate authentication with a simple HTTP request before creating MCP connection."""
+    """Pre-validate authentication with a simple HTTP request before creating MCP connection.
+    
+    This function helps avoid async generator cleanup bugs in the MCP client library
+    by detecting authentication failures early, before the problematic MCP transport
+    creation process begins.
+    
+    Sends a proper MCP InitializeRequest to test authentication and server response.
+    
+    Args:
+        url_str: The MCP server URL to test
+        headers: Optional HTTP headers (typically containing Authorization)
+        timeout: Request timeout in seconds
+        auth: Optional httpx authentication object
+        logger: Logger for debugging
+        
+    Returns:
+        Tuple of (success: bool, message: str) where:
+        - success=True means authentication is valid
+        - success=False means authentication failed with descriptive message
+        
+    Note:
+        This function only validates authentication (401, 402, 403 errors).
+        Other errors like connection failures are returned as (False, error_message).
+    """
     
     # Create InitializeRequest as per MCP specification (similar to test_streamable_http_support)
     init_request = {
@@ -546,9 +570,10 @@ async def connect_to_mcp_server(
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> Transport:
-    """Establishes a connection to an MCP server
+    """Establishes a connection to an MCP server with robust error handling.
 
-    Implements consistent transport selection logic matching TypeScript version:
+    Implements consistent transport selection logic and includes authentication
+    pre-validation to prevent async generator cleanup bugs in the MCP client library.
     
     Transport Selection Priority:
     1. Explicit transport/type field (must match URL protocol if URL provided)
@@ -558,6 +583,11 @@ async def connect_to_mcp_server(
     
     For HTTP URLs without explicit transport, follows MCP specification backwards
     compatibility: try Streamable HTTP first, fallback to SSE on 4xx errors.
+    
+    Authentication Pre-validation:
+    For HTTP/HTTPS servers, authentication is pre-validated before attempting
+    the actual MCP connection to avoid async generator cleanup issues that can
+    occur in the underlying MCP client library when authentication fails.
 
     Supports multiple transport types:
     - stdio: For local command-based servers
@@ -566,17 +596,17 @@ async def connect_to_mcp_server(
     - websocket, ws: For WebSocket servers
 
     Args:
-        server_name: Server instance name to use for better logging
+        server_name: Server instance name to use for better logging and error context
         server_config: Configuration dictionary for server setup
-        exit_stack: Context manager for cleanup handling
+        exit_stack: AsyncExitStack for managing transport lifecycle and cleanup
         logger: Logger instance for debugging and monitoring
 
     Returns:
-        A tuple of receive and send streams for server communication
+        A Transport tuple containing receive and send streams for server communication
 
     Raises:
-        McpInitializationError: If configuration is invalid
-        Exception: If server initialization fails
+        McpInitializationError: If configuration is invalid or server initialization fails
+        Exception: If unexpected errors occur during connection
     """
     try:
         logger.info(f'MCP server "{server_name}": '
@@ -779,19 +809,31 @@ async def get_mcp_server_tools(
     exit_stack: AsyncExitStack,
     logger: logging.Logger = logging.getLogger(__name__)
 ) -> list[BaseTool]:
-    """Retrieves and converts MCP server tools to LangChain format.
+    """Retrieves and converts MCP server tools to LangChain BaseTool format.
+    
+    Establishes a client session with the MCP server, lists available tools,
+    and wraps each tool in a LangChain-compatible adapter class. The adapter
+    handles async execution, error handling, and result formatting.
+    
+    Tool Conversion Features:
+    - JSON Schema to Pydantic model conversion for argument validation
+    - Async-only execution (raises NotImplementedError for sync calls)
+    - Automatic result formatting from MCP TextContent to strings
+    - Error handling with ToolException for MCP tool failures
+    - Comprehensive logging of tool input/output and execution metrics
 
     Args:
-        server_name: Server instance name to use for better logging
-        transport: Communication channels tuple
-        exit_stack: Context manager for cleanup handling
+        server_name: Server instance name for logging and error context
+        transport: Communication channels tuple (2-tuple for SSE/stdio, 3-tuple for streamable HTTP)
+        exit_stack: AsyncExitStack for managing session lifecycle and cleanup
         logger: Logger instance for debugging and monitoring
 
     Returns:
-        List of LangChain tools converted from MCP tools
+        List of LangChain BaseTool instances that wrap MCP server tools
 
     Raises:
-        Exception: If tool conversion fails
+        McpInitializationError: If transport format is unexpected or session initialization fails
+        Exception: If tool retrieval or conversion fails
     """
     try:
         # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
@@ -957,17 +999,23 @@ def init_logger() -> logging.Logger:
 
 # Type hint for cleanup function
 McpServerCleanupFn = Callable[[], Awaitable[None]]
-"""Type for the async cleanup function returned by
-    convert_mcp_to_langchain_tools.
+"""Type for the async cleanup function returned by convert_mcp_to_langchain_tools.
 
-This represents an asynchronous function that takes no arguments and returns
-nothing. It's used to properly shut down all MCP server connections and clean
-up resources when the tools are no longer needed.
+This function encapsulates the cleanup of all MCP server connections managed by
+the AsyncExitStack. When called, it properly closes all transport connections,
+sessions, and resources in the correct order.
+
+Important: Always call this function when you're done using the tools to prevent
+resource leaks and ensure graceful shutdown of MCP server connections.
 
 Example usage:
     tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
-    # Use tools...
-    await cleanup()  # Clean up resources when done
+    try:
+        # Use tools with your LangChain application...
+        result = await tools[0].arun(param="value")
+    finally:
+        # Always cleanup, even if exceptions occur
+        await cleanup()
 """
 
 
@@ -975,65 +1023,73 @@ async def convert_mcp_to_langchain_tools(
     server_configs: McpServersConfig,
     logger: logging.Logger | None = None
 ) -> tuple[list[BaseTool], McpServerCleanupFn]:
-    """Initialize multiple MCP servers and convert their tools to
-    LangChain format.
+    """Initialize multiple MCP servers and convert their tools to LangChain format.
 
-    This async function manages parallel initialization of multiple MCP
-    servers, converts their tools to LangChain format, and provides a cleanup
-    mechanism. It orchestrates the full lifecycle of multiple servers.
+    This is the main entry point for the library. It orchestrates the complete
+    lifecycle of multiple MCP server connections, from initialization through
+    tool conversion to cleanup. Provides robust error handling and authentication
+    pre-validation to prevent common MCP client library issues.
 
-    Implements MCP specification backwards compatibility: for HTTP URLs,
-    automatically tries Streamable HTTP first, then falls back to SSE on 4xx 
-    errors for maximum server compatibility.
+    Key Features:
+    - Parallel initialization of multiple servers for efficiency
+    - Authentication pre-validation for HTTP servers to prevent async generator bugs
+    - Automatic transport selection and fallback per MCP specification
+    - Comprehensive error handling with McpInitializationError
+    - User-controlled cleanup via returned async function
+    - Support for both local (stdio) and remote (HTTP/WebSocket) servers
 
-    Supports multiple transport types:
-    - stdio: For local command-based servers
-    - streamable_http: For Streamable HTTP servers (tried first for HTTP URLs)
-    - sse: For Server-Sent Events HTTP servers (fallback for HTTP URLs)
-    - websocket: For WebSocket servers
+    Transport Support:
+    - stdio: Local command-based servers (npx, uvx, python, etc.)
+    - streamable_http: Modern HTTP servers (recommended, tried first)
+    - sse: Legacy Server-Sent Events HTTP servers (fallback)
+    - websocket: WebSocket servers for real-time communication
+
+    Error Handling:
+    All configuration and connection errors are wrapped in McpInitializationError
+    with server context for easy debugging. Authentication failures are detected
+    early to prevent async generator cleanup issues in the MCP client library.
 
     Args:
-        server_configs: Dictionary mapping server names to their
-            configurations, where each configuration contains command, args,
-            and env settings for stdio servers, or url, transport, and headers
-            for remote servers
-        logger: Logger instance to use for logging events and errors.
-            If None, uses module logger with fallback to a pre-configured
-            logger when no root handlers exist.
+        server_configs: Dictionary mapping server names to configurations.
+            Each config can be either McpServerCommandBasedConfig for local
+            servers or McpServerUrlBasedConfig for remote servers.
+        logger: Optional logger instance. If None, creates a pre-configured
+            logger with appropriate levels for MCP debugging.
 
     Returns:
         A tuple containing:
+        - List[BaseTool]: All tools from all servers, ready for LangChain use
+        - McpServerCleanupFn: Async function to properly shutdown all connections
 
-        * List of converted LangChain tools from all servers
-        * Async cleanup function to properly shutdown all server connections
+    Raises:
+        McpInitializationError: If any server fails to initialize with detailed context
 
     Example:
-
         server_configs = {
-            "fetch": {
-                "command": "uvx", "args": ["mcp-server-fetch"]
+            "local-filesystem": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
             },
-            "weather": {
-                "command": "npx", "args": ["-y","@h1deya/mcp-server-weather"]
-            },
-            "auto-detection-server": {
+            "remote-api": {
                 "url": "https://api.example.com/mcp",
-                # Will auto-try Streamable HTTP, fallback to SSE on 4xx
-                "headers": {"Authorization": "Bearer token123"},
-                "timeout": 60.0
-            },
-            "explicit-sse-server": {
-                "url": "https://legacy.example.com/mcp/sse",
-                "transport": "sse",
-                "headers": {"Authorization": "Bearer token123"}
+                "headers": {"Authorization": "Bearer your-token"},
+                "timeout": 30.0
             }
         }
 
-        tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
-
-        # Use tools...
-
-        await cleanup()
+        try:
+            tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)
+            
+            # Use tools with your LangChain application
+            for tool in tools:
+                result = await tool.arun(**tool_args)
+                
+        except McpInitializationError as e:
+            print(f"Failed to initialize MCP server '{e.server_name}': {e}")
+            
+        finally:
+            # Always cleanup when done
+            await cleanup()
     """
 
     if logger is None:
