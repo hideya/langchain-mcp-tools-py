@@ -117,6 +117,37 @@ python api_key_auth_server.py        # Port 8002
 python test_comprehensive_auth.py
 ```
 
+### 10. `simple_oauth_server.py`
+MCP server with OAuth 2.0 authentication:
+- **Authentication**: OAuth 2.0 Authorization Code Flow
+- **Endpoint**: `http://localhost:8003/mcp`
+- **OAuth Endpoints**: `/authorize`, `/token`, `/.well-known/oauth-authorization-server`
+- **Purpose**: Test your library's `auth` parameter support
+- **Features**: Full OAuth 2.0 server with authorization and token endpoints
+
+**Usage:**
+```bash
+python simple_oauth_server.py        # Start OAuth server
+python test_oauth_client.py          # Test OAuth flow
+```
+
+### 11. `test_oauth_client.py`
+OAuth authentication test client:
+- Tests OAuth 2.0 authorization code flow
+- Tests browser-based authorization
+- Tests access token usage for MCP requests
+- Tests error scenarios
+- Demonstrates `auth` parameter usage with `OAuthClientProvider`
+
+**Usage:**
+```bash
+# Start OAuth server first:
+python simple_oauth_server.py        # Port 8003
+
+# Run OAuth tests (browser will open):
+python test_oauth_client.py
+```
+
 ## Testing Your Implementation
 
 1. **Start a test server:**
@@ -155,6 +186,10 @@ python test_comprehensive_auth.py
    python simple_bearer_auth_server.py  # Terminal 1 (port 8001)
    python api_key_auth_server.py        # Terminal 2 (port 8002)
    python test_comprehensive_auth.py    # Terminal 3
+   
+   # OAuth test (browser will open):
+   python simple_oauth_server.py        # Terminal 1 (port 8003)
+   python test_oauth_client.py          # Terminal 2
    ```
 
 ## Expected Behavior
