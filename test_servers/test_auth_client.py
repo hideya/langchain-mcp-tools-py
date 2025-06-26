@@ -26,7 +26,7 @@ async def test_bearer_auth():
     print("=" * 60)
     
     # Test 1: Valid Authentication
-    print("\\n✅ Test 1: Valid Bearer Token")
+    print("\n✅ Test 1: Valid Bearer Token")
     valid_config = {
         "auth-server": {
             "url": "http://127.0.0.1:8001/mcp",
@@ -42,7 +42,7 @@ async def test_bearer_auth():
         print(f"✅ Connected with valid token: {len(tools)} tools available")
         
         # List tools
-        print("\\n🛠️  Available Tools:")
+        print("\n🛠️  Available Tools:")
         for tool in tools:
             print(f"  • {tool.name}: {tool.description}")
         
@@ -51,7 +51,7 @@ async def test_bearer_auth():
             echo_tool = next((t for t in tools if t.name == "authenticated_echo"), None)
             if echo_tool:
                 result = await echo_tool.ainvoke({"message": "Hello from authenticated client!"})
-                print(f"\\n🔧 Tool test: {result}")
+                print(f"\n🔧 Tool test: {result}")
         
         await cleanup()
         print("✅ Valid auth test completed successfully")
@@ -61,7 +61,7 @@ async def test_bearer_auth():
 
 async def test_invalid_auth():
     """Test invalid authentication (should fail)."""
-    print("\\n❌ Test 2: Invalid Bearer Token")
+    print("\n❌ Test 2: Invalid Bearer Token")
     
     invalid_config = {
         "auth-server": {
@@ -83,7 +83,7 @@ async def test_invalid_auth():
 
 async def test_no_auth():
     """Test no authentication (should fail)."""
-    print("\\n🚫 Test 3: No Authentication Header")
+    print("\n🚫 Test 3: No Authentication Header")
     
     no_auth_config = {
         "auth-server": {
@@ -103,7 +103,7 @@ async def test_no_auth():
 
 async def test_expired_token():
     """Test expired token (should fail)."""
-    print("\\n⏰ Test 4: Expired Token")
+    print("\n⏰ Test 4: Expired Token")
     
     expired_config = {
         "auth-server": {
@@ -125,7 +125,7 @@ async def test_expired_token():
 
 async def test_different_tokens():
     """Test different token types."""
-    print("\\n🔑 Test 5: Different Token Types")
+    print("\n🔑 Test 5: Different Token Types")
     
     test_configs = {
         "read-only": {
@@ -141,7 +141,7 @@ async def test_different_tokens():
     }
     
     for token_type, config in test_configs.items():
-        print(f"\\n🔍 Testing {token_type} token...")
+        print(f"\n🔍 Testing {token_type} token...")
         try:
             tools, cleanup = await convert_mcp_to_langchain_tools({f"server-{token_type}": config})
             print(f"✅ {token_type} token accepted: {len(tools)} tools")
@@ -151,7 +151,7 @@ async def test_different_tokens():
 
 async def test_custom_headers():
     """Test custom headers functionality."""
-    print("\\n🎨 Test 6: Custom Headers")
+    print("\n🎨 Test 6: Custom Headers")
     
     custom_headers_config = {
         "custom-auth-server": {

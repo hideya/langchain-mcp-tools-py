@@ -205,23 +205,23 @@ async def test_oauth_authentication():
             }
         }
 
-        print("\\n🚀 Starting OAuth flow...")
+        print("\n🚀 Starting OAuth flow...")
         print("💡 A browser window will open for authorization")
         print("💡 Complete the OAuth flow in the browser")
         
         tools, cleanup = await convert_mcp_to_langchain_tools(oauth_config)
         
-        print(f"\\n✅ OAuth authentication successful!")
+        print(f"\n✅ OAuth authentication successful!")
         print(f"🛠️  Connected with {len(tools)} tools available")
         
         # List available tools
-        print("\\n🔧 Available Tools:")
+        print("\n🔧 Available Tools:")
         for tool in tools:
             print(f"  • {tool.name}: {tool.description}")
         
         # Test a tool
         if tools:
-            print("\\n🧪 Testing tool execution...")
+            print("\n🧪 Testing tool execution...")
             user_tool = next((t for t in tools if 'current_user' in t.name), None)
             if user_tool:
                 result = await user_tool.ainvoke({})
@@ -237,10 +237,10 @@ async def test_oauth_authentication():
                 print(f"🔧 Create tool result: {result}")
         
         await cleanup()
-        print("\\n✅ OAuth test completed successfully!")
+        print("\n✅ OAuth test completed successfully!")
         
     except Exception as e:
-        print(f"\\n❌ OAuth test failed: {e}")
+        print(f"\n❌ OAuth test failed: {e}")
         import traceback
         traceback.print_exc()
     finally:
@@ -248,11 +248,11 @@ async def test_oauth_authentication():
 
 async def test_oauth_error_scenarios():
     """Test OAuth error scenarios."""
-    print("\\n⚠️  Testing OAuth Error Scenarios")
+    print("\n⚠️  Testing OAuth Error Scenarios")
     print("=" * 50)
     
     # Test 1: Invalid server URL
-    print("\\n🧪 Test 1: Invalid OAuth server URL")
+    print("\n🧪 Test 1: Invalid OAuth server URL")
     try:
         oauth_auth = OAuthClientProvider(
             server_url="http://localhost:9999",  # Non-existent server
@@ -284,7 +284,7 @@ async def test_oauth_error_scenarios():
 
 async def test_mixed_auth_with_oauth():
     """Test mixed authentication including OAuth."""
-    print("\\n🔀 Testing Mixed Authentication (OAuth + Headers)")
+    print("\n🔀 Testing Mixed Authentication (OAuth + Headers)")
     print("=" * 60)
     
     # This test would require multiple servers running
@@ -331,15 +331,15 @@ async def main():
     await test_oauth_error_scenarios()
     await test_mixed_auth_with_oauth()
     
-    print("\\n🎉 All OAuth Tests Completed!")
-    print("\\n📊 Summary of what was tested:")
+    print("\n🎉 All OAuth Tests Completed!")
+    print("\n📊 Summary of what was tested:")
     print("  ✅ OAuth 2.0 authorization code flow")
     print("  ✅ OAuth client provider integration") 
     print("  ✅ Browser-based authorization flow")
     print("  ✅ Access token usage for MCP requests")
     print("  ✅ Tool execution with OAuth authentication")
     print("  ✅ Error handling for invalid OAuth configs")
-    print("\\n💡 Key validation points:")
+    print("\n💡 Key validation points:")
     print("  • 'auth' parameter accepts OAuthClientProvider")
     print("  • OAuth flow completes successfully")
     print("  • Access tokens are used for MCP requests")
