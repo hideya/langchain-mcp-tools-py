@@ -104,6 +104,7 @@ class McpServerUrlBasedConfig(TypedDict):
         transport: Optional transport type. Supported values:
                 "streamable_http" or "http" (recommended, attempted first), 
                 "sse" (deprecated, fallback), "websocket"
+        type: Optional alternative field name for transport (for compatibility)
         headers: Optional dictionary of HTTP headers to include in the request,
                 typically used for authentication (e.g., bearer tokens).
         timeout: Optional timeout for HTTP requests (default: 30.0 seconds).
