@@ -102,7 +102,7 @@ async def run() -> None:
             # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
             "github": {
                 # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
-                "transport": "streamable_http",
+                "type": "http",
                 # "__pre_validate_authentication": False,
                 "url": "https://api.githubcopilot.com/mcp/",
                 "headers": {

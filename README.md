@@ -77,7 +77,14 @@ mcp_servers = {
     "fetch": {
         "command": "uvx",
         "args": ["mcp-server-fetch"]
-    }
+    },
+    "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+        }
+    },
 }
 
 tools, cleanup = await convert_mcp_to_langchain_tools(
@@ -112,48 +119,27 @@ try [this LangChain application built with the utility](https://github.com/hidey
 For detailed information on how to use this library, please refer to the following document:  
 ["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
 
-## Experimental Features
+## MCP Protocol Support
 
-### Remote MCP Server Support
+This library supports **MCP Protocol version 2025-03-26** and maintains backwards compatibility with version 2024-11-05.
+It follows the [official MCP specification](https://modelcontextprotocol.io/specification/2025-03-26/) for transport selection and backwards compatibility.
 
-`mcp_servers` configuration for SSE and Websocket servers are as follows:
+## Features
 
-```python
-    "sse-server-name": {
-        "url": f"http://{sse_server_host}:{sse_server_port}/..."
-    },
+### stderr Redirection for Local MCP Server
 
-    "ws-server-name": {
-        "url": f"ws://{ws_server_host}:{ws_server_port}/..."
-    },
-```
-
-Note that the key `"url"` may be changed in the future to match
-the MCP server configurations used by Claude for Desktop once
-it introduces remote server support.
-
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L43-L54)
-
-### Authentication Support for SSE Connections
-
-A new key `"headers"` has been introduced to pass HTTP headers to the SSE (Server-Sent Events) connection.  
-It takes  `dict[str, str]` and is primarily intended to support SSE MCP servers
-that require authentication via bearer tokens or other custom headers.
+A new key `"errlog"` has been introduced to specify a file-like object
+to which local (stdio) MCP server's stderr is redirected.
 
 ```python
-    "sse-server-name": {
-        "url": f"http://{sse_server_host}:{sse_server_port}/..."
-        "headers": {"Authorization": f"Bearer {bearer_token}"}
-    },
+    log_path = f"mcp-server-{server_name}.log"
+    log_file = open(log_path, "w")
+    mcp_servers[server_name]["errlog"] = log_file
 ```
 
-The key name `header` is derived from the Python SDK
-[`sse_client()`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/sse.py#L24) argument name.
-
-A simple example showing how to implement MCP SSE server and client with authentication can be found
-in [sse_auth_test_client.py](https://github.com/hideya/langchain-mcp-tools-py-usage/tree/main/src/sse_auth_test_client.py)
-and in [sse_auth_test_server.py](https://github.com/hideya/langchain-mcp-tools-py-usage/tree/main/src/sse_auth_test_server.py)
-of [this usage examples repo](https://github.com/hideya/langchain-mcp-tools-py-usage).
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108).  
+The key name `errlog` is derived from
+[`stdio_client()`'s argument `errlog`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
 
 ### Working Directory Configuration for Local MCP Servers
 
@@ -171,26 +157,126 @@ can be specified with the `"cwd"` key as follows:
 The key name `cwd` is derived from
 Python SDK's [`StdioServerParameters`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L76-L77).
 
-### stderr Redirection for Local MCP Server
+**Note:** The library automatically adds the `PATH` environment variable to stdio servers if not explicitly provided to ensure servers can find required executables.
 
-A new key `"errlog"` has been introduced to specify a file-like object
-to which local (stdio) MCP server's stderr is redirected.
+### Transport Selection Priority
 
-```python
-    log_path = f"mcp-server-{server_name}.log"
-    log_file = open(log_path, "w")
-    mcp_servers[server_name]["errlog"] = log_file
+The library selects transports using the following priority order:
+
+1. **Explicit transport/type field** (must match URL protocol if URL provided)
+2. **URL protocol auto-detection** (http/https → StreamableHTTP → SSE, ws/wss → WebSocket)
+3. **Command presence** → Stdio transport
+4. **Error** if none of the above match
+
+This ensures predictable behavior while allowing flexibility for different deployment scenarios.
+
+### Remote MCP Server Support
+
+`mcp_servers` configuration for Streamable HTTP, SSE (Server-Sent Events) and Websocket servers are as follows:
+
+```py
+    # Auto-detection: tries Streamable HTTP first, falls back to SSE on 4xx errors
+    "auto-detect-server": {
+       "url": f"http://{server_host}:{server_port}/..."
+    },
+
+    # Explicit Streamable HTTP
+    "streamable-http-server": {
+        "url": f"http://{server_host}:{server_port}/...",
+        "transport": "streamable_http"
+        # "type": "http"  # VSCode-style config also works instead of the above
+    },
+
+    # Explicit SSE
+    "sse-server-name": {
+        "url": f"http://{sse_server_host}:{sse_server_port}/...",
+        "transport": "sse"  # or `"type": "sse"`
+    },
+
+    # WebSocket
+    "ws-server-name": {
+        "url": f"ws://${ws_server_host}:${ws_server_port}/..."
+        # optionally `"transport": "ws"` or `"type": "ws"`
+    },
 ```
 
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108).  
-The key name `errlog` is derived from
-[`stdio_client()`'s argument `errlog`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
+The `"headers"` key can be used to pass HTTP headers to Streamable HTTP and SSE connection.  
+
+```py
+    "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+        }
+    },
+```
+
+NOTE: When accessing the GitHub MCP server, [GitHub PAT (Personal Access Token)](https://github.com/settings/personal-access-tokens)
+alone is not enough; your GitHub account must have an active Copilot subscription or be assigned a Copilot license through your organization.
+
+**Auto-detection behavior (default):**
+- For HTTP/HTTPS URLs without explicit `transport`, the library follows [MCP specification recommendations](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#backwards-compatibility)
+- First attempts Streamable HTTP transport
+- If Streamable HTTP fails with a 4xx error, automatically falls back to SSE transport
+- Non-4xx errors (network issues, etc.) are re-thrown without fallback
+
+**Explicit transport selection:**
+- Set `"transport": "streamable_http"` (or VSCode-style config `"type": "http"`) to force Streamable HTTP (no fallback)
+- Set `"transport": "sse"` to force SSE transport
+- WebSocket URLs (`ws://` or `wss://`) always use WebSocket transport
+
+Streamable HTTP is the modern MCP transport that replaces the older HTTP+SSE transport. According to the [official MCP documentation](https://modelcontextprotocol.io/docs/concepts/transports): "SSE as a standalone transport is deprecated as of protocol version 2025-03-26. It has been replaced by Streamable HTTP, which incorporates SSE as an optional streaming mechanism."
+
+### Authentication Support for Streamable HTTP Connections
+
+The library supports OAuth 2.1 authentication for Streamable HTTP connections:
+
+```py
+from mcp.client.auth import OAuthClientProvider
+...
+
+    # Create OAuth authentication provider
+    oauth_auth = OAuthClientProvider(
+        server_url="https://...",
+        client_metadata=...,
+        storage=...,
+        redirect_handler=...,
+        callback_handler=...,
+    )
+
+    # Test configuration with OAuth auth
+    mcp_servers = {
+        "secure-streamable-server": {
+            "url": "https://.../mcp/",
+            "auth": oauth_auth,
+            "timeout": 30.0
+        },
+    }
+```
+
+Test implementations are provided:
+
+- **Streamable HTTP Authentication Tests**:
+  - MCP client uses this library: [streamable_http_oauth_test_client.py](https://github.com/hideya/langchain-mcp-tools-py/tree/main/testfiles/streamable_http_oauth_test_client.py)
+  - Test MCP Server:  [streamable_http_oauth_test_server.py](https://github.com/hideya/langchain-mcp-tools-py/tree/main/testfiles/streamable_http_oauth_test_server.py)
+
+### Authentication Support for SSE Connections (Legacy)
+
+The library also supports authentication for SSE connections to MCP servers.
+Note that SSE transport is deprecated; Streamable HTTP is the recommended approach.
 
 ## Limitations
 
-- Currently, only text results of tool calls are supported.
-- MCP features other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
+- **Tool Return Types**: Currently, only text results of tool calls are supported.
+The library uses LangChain's `response_format: 'content'` (the default), which only supports text strings.
+While MCP tools can return multiple content types (text, images, etc.), this library currently filters and uses only text content.
+- **MCP Features**: Only MCP [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are supported. Other MCP features like Resources, Prompts, and Sampling are not implemented.
 
 ## Change Log
 
 Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)
+
+## Appendix
+
+### Troubleshooting
