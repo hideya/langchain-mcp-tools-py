@@ -40,6 +40,10 @@ The project follows a simple and focused architecture:
   4. Tools are converted to LangChain format
   5. A cleanup function is returned to handle resource management
 
+## Understanding the Implementation
+
+For detailed technical analysis, design decisions, and known issues, see [TECHNICAL.md](TECHNICAL.md).
+
 ## Development Workflow
 
 1. **Making changes**

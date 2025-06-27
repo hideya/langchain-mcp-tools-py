@@ -42,21 +42,22 @@ test-publish: prep-publish
 	@echo
 	uvx twine check dist/*
 
-test: install
+install-dev: install
 	uv pip install -e ".[dev]"
+
+test: install-dev
 	.venv/bin/pytest tests/ -v
 
-run-simple-usage: install
-	uv pip install -e ".[dev]"
-	uv run testfiles/simple-usage.py
+run-simple-usage: install-dev
+	uv run testfiles/simple_usage.py
 
-run-sse-auth-test-client: install
-	uv pip install -e ".[dev]"
-	uv run testfiles/sse-auth-test-client.py --no-server
+# E.g.: make run-streamable-http-oauth-test-server
+run-%-test-server: install-dev
+	uv run testfiles/$(shell echo $* | tr '-' '_')_test_server.py
 
-run-sse-auth-test-server: install
-	uv pip install -e ".[dev]"
-	uv run testfiles/sse-auth-test-server.py
+# E.g.: make run-streamable-http-oauth-test-client
+run-%-test-client: install-dev
+	uv run testfiles/$(shell echo $* | tr '-' '_')_test_client.py
 
 sphinx: install
 	make -C docs clean html
