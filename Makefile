@@ -42,28 +42,31 @@ test-publish: prep-publish
 	@echo
 	uvx twine check dist/*
 
-test: install
+install-dev: install
 	uv pip install -e ".[dev]"
+
+test: install-dev
 	.venv/bin/pytest tests/ -v
 
-run-simple-usage: install
-	uv pip install -e ".[dev]"
+run-simple-usage: install-dev
 	uv run testfiles/simple_usage.py
 
-run-streamable-http-stateless-test-server: install
-	uv pip install -e ".[dev]"
+run-streamable-http-stateless-test-server: install-dev
 	uv run testfiles/streamable_http_stateless_test_server.py
 
-run-streamable-http-stateless-test-client: install
-	uv pip install -e ".[dev]"
+run-streamable-http-stateless-test-client: install-dev
 	uv run testfiles/streamable_http_stateless_test_client.py
 
-run-streamable-http-bearer_auth-test-server: install
-	uv pip install -e ".[dev]"
+run-streamable-http-bearer_auth-test-server: install-dev
 	uv run testfiles/streamable_http_bearer_auth_test_server.py
 
-run-streamable-http-bearer_auth-test-client: install
-	uv pip install -e ".[dev]"
+run-streamable-http-bearer_auth-test-client: install-dev
+	uv run testfiles/streamable_http_bearer_auth_test_client.py
+
+run-streamable-http-oauth-test-server: install-dev
+	uv run testfiles/streamable_http_bearer_auth_test_server.py
+
+run-streamable-http-oauth-test-client: install-dev
 	uv run testfiles/streamable_http_bearer_auth_test_client.py
 
 run-sse-auth-test-server: install
