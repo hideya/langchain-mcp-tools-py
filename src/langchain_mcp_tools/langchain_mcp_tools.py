@@ -905,7 +905,7 @@ async def get_mcp_server_tools(
                     Raises:
                         ToolException: If the tool execution fails
                     """
-                    logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
+                    logger.info(f'MCP tool "{server_name}"/"{self.name}" '
                                 f"received input: {kwargs}")
 
                     try:
@@ -941,7 +941,7 @@ async def get_mcp_server_tools(
 
                         # Log rough result size for monitoring
                         size = len(result_content_text.encode())
-                        logger.info(f'MCP tool "{server_name}"/"{tool.name}" '
+                        logger.info(f'MCP tool "{server_name}"/"{self.name}" '
                                     f"received result (size: {size})")
 
                         # If no text content, return a clear message
@@ -955,7 +955,7 @@ async def get_mcp_server_tools(
 
                     except Exception as e:
                         logger.warn(
-                            f'MCP tool "{server_name}"/"{tool.name}" '
+                            f'MCP tool "{server_name}"/"{self.name}" '
                             f"caused error:  {str(e)}"
                         )
                         if self.handle_tool_error:
