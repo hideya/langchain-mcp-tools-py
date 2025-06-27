@@ -58,6 +58,14 @@ run-streamable-http-stateless-test-client: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/streamable_http_stateless_test_client.py
 
+run-streamable-http-bearer_auth-test-server: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/streamable_http_bearer_auth_test_server.py
+
+run-streamable-http-bearer_auth-test-client: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/streamable_http_bearer_auth_test_client.py
+
 run-sse-auth-test-server: install
 	uv pip install -e ".[dev]"
 	uv run testfiles/sse_auth_test_server.py
