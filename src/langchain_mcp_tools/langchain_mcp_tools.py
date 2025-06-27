@@ -149,6 +149,7 @@ class McpServerUrlBasedConfig(TypedDict):
     terminate_on_close: NotRequired[bool]
     httpx_client_factory: NotRequired[McpHttpClientFactory]
     auth: NotRequired[httpx.Auth]
+    __prevalidate_authentication: NotRequired[bool]
 
 # Type for a single MCP server configuration, which can be either
 # command-based or URL-based.
@@ -636,20 +637,20 @@ async def connect_to_mcp_server(
             
             if url_scheme in ["http", "https"]:
                 # HTTP/HTTPS: Handle explicit transport or auto-detection
+                if (url_config.get("__pre_validate_authentication")):
+                    # Pre-validate authentication to avoid MCP async generator cleanup bugs
+                    logger.info(f'MCP server "{server_name}": Pre-validating authentication')
+                    auth_valid, auth_message = await validate_auth_before_connection(
+                        url_str,
+                        headers=headers,
+                        timeout=timeout or 30.0,
+                        auth=auth,
+                        logger=logger
+                    )
 
-                # Pre-validate authentication to avoid MCP async generator cleanup bugs
-                logger.info(f'MCP server "{server_name}": Pre-validating authentication')
-                auth_valid, auth_message = await validate_auth_before_connection(
-                    url_str,
-                    headers=headers, 
-                    timeout=timeout or 30.0,
-                    auth=auth,
-                    logger=logger
-                )
-                
-                if not auth_valid:
-                    # logger.error(f'MCP server "{server_name}": {auth_message}')
-                    raise McpInitializationError(auth_message, server_name=server_name)
+                    if not auth_valid:
+                        # logger.error(f'MCP server "{server_name}": {auth_message}')
+                        raise McpInitializationError(auth_message, server_name=server_name)
 
                 # Now proceed with the original connection logic
                 if transport_type and transport_type.lower() in ["streamable_http", "http"]:
