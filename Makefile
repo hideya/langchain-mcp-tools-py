@@ -48,15 +48,23 @@ test: install
 
 run-simple-usage: install
 	uv pip install -e ".[dev]"
-	uv run testfiles/simple-usage.py
+	uv run testfiles/simple_usage.py
+
+run-streamable-http-stateless-test-server: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/streamable_http_stateless_test_server.py
+
+run-streamable-http-stateless-test-client: install
+	uv pip install -e ".[dev]"
+	uv run testfiles/streamable_http_stateless_test_client.py
 
 run-sse-auth-test-server: install
 	uv pip install -e ".[dev]"
-	uv run testfiles/sse-auth-test-server.py
+	uv run testfiles/sse_auth_test_server.py
 
 run-sse-auth-test-client: install
 	uv pip install -e ".[dev]"
-	uv run testfiles/sse-auth-test-client.py
+	uv run testfiles/sse_auth_test_client.py
 
 sphinx: install
 	make -C docs clean html

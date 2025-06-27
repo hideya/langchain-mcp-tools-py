@@ -35,7 +35,7 @@ Compatibility Notes:
 Testing:
 ========
 
-Use with testfiles/sse-auth-test-client.py to verify:
+Use with testfiles/sse_auth_test_client.py to verify:
 - Transport auto-detection works (405 → SSE fallback)
 - Authentication works for all endpoints
 - Tools execute successfully with auth verification

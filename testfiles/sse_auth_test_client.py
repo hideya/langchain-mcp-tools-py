@@ -20,10 +20,10 @@ Usage:
 ======
 
 1. Start the SSE authentication test server:
-   uv run testfiles/sse-auth-test-server.py
+   uv run testfiles/sse_auth_test_server.py
 
 2. Run this client:
-   uv run testfiles/sse-auth-test-client.py
+   uv run testfiles/sse_auth_test_client.py
 
 Expected Flow:
 ==============
