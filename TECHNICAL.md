@@ -1,4 +1,4 @@
-# Developer README
+# Technical Details
 
 This document contains important implementation details, design decisions, and lessons learned during the development of `langchain-mcp-tools`.
 
