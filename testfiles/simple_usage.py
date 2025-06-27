@@ -105,9 +105,9 @@ async def run() -> None:
                 "type": "http",
                 # "__pre_validate_authentication": False,
                 "url": "https://api.githubcopilot.com/mcp/",
-                "headers": {
-                    "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
-                }
+                # "headers": {
+                #     "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+                # }
             },
         }
 

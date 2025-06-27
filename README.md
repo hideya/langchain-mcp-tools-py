@@ -119,6 +119,10 @@ try [this LangChain application built with the utility](https://github.com/hidey
 For detailed information on how to use this library, please refer to the following document:  
 ["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
 
+## Building from Source
+
+See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
+
 ## MCP Protocol Support
 
 This library supports **MCP Protocol version 2025-03-26** and maintains backwards compatibility with version 2024-11-05.
@@ -279,4 +283,80 @@ Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/C
 
 ## Appendix
 
-### Troubleshooting
+### Troubleshooting Authentication Issues
+
+When Authentication error happens, massive logs will be generated,
+which make it hard to identify that authentication is the root cause.
+
+In such a case, check around the end of the log messages.
+You will see messages like `Authentication failed (401 Unauthorized)` or
+`Authentication failed (403 Forbidden)`.
+
+In order to print these key error message at the very end of the logs,
+this library performs extra authentication pre-validation for HTTP / HTTPS MCP servers
+before attempting the actual MCP connection.
+Without this approach, the authentication error will be burried in middle of the massive logs.
+
+However, note that this pre-validation can interffere MCP servers behavior,
+as this is not a part of the MCP spec and is spefic to this library.
+
+#### When and How to Disable Pre-validation
+Set `"__pre_validate_authentication": False` in your server config if:
+- Using OAuth flows that require complex authentication handshakes
+- The MCP server doesn't accept simple HTTP POST requests for validation
+- You're experiencing false negatives in the auth validation
+
+**Example:**
+```python
+"oauth-server": {
+    "url": "https://api.example.com/mcp",
+    "auth": oauth_provider,  # Complex OAuth provider
+    "__pre_validate_authentication": False  # Skip the pre-validation
+}
+```
+
+#### Debugging Authentication
+1. **Check your tokens / credentials** - Most auth failures are due to expired or incorrect tokens
+2. **Verify token permissions** - Some MCP servers require specific scopes (e.g., GitHub Copilot license)
+3. **Test with curl** - Try a simple HTTP request to verify your auth setup:
+   ```bash
+   curl -H "Authorization: Bearer your-token" https://api.example.com/mcp/
+   ```
+
+### Transport Selection Issues
+
+The library automatically selects the appropriate transport based on your configuration:
+
+1. **Explicit transport field** takes priority
+2. **URL protocol detection** (http/https → Streamable HTTP → SSE fallback, ws/wss → WebSocket)
+3. **Command presence** → stdio transport
+
+#### Common Issues
+- **Both url and command specified**: Choose one approach per server
+- **Transport/URL mismatch**: e.g., `"transport": "websocket"` with `"url": "https://..."`
+- **Missing required fields**: Must have either `url` or `command`
+
+#### Auto-detection vs Explicit
+For HTTP servers, the library tries Streamable HTTP first, then falls back to SSE on 4xx errors (per MCP specification). Use explicit `"transport"` if you want to skip auto-detection.
+
+### Debug Mode
+
+For detailed debugging, enable debug logging:
+
+```python
+import logging
+logging.getLogger("langchain_mcp_tools").setLevel(logging.DEBUG)
+
+# Also useful for transport debugging:
+logging.getLogger("mcp").setLevel(logging.DEBUG)
+```
+
+This will show:
+- Transport selection decisions
+- Authentication validation attempts
+- Tool discovery and conversion steps
+- Connection establishment details
+
+#### For Developers
+
+For deeper technical details about implementation challenges and solutions, see [TECHNICAL.md](TECHNICAL.md).

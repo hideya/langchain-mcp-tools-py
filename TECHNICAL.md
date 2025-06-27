@@ -14,7 +14,7 @@ This document contains important implementation details, design decisions, and l
 
 ### The Problem We Discovered
 
-During development, we encountered a critical issue where authentication failures (401 Unauthorized) were causing **async generator cleanup errors** in the underlying MCP Python client library instead of proper error propagation.
+During development, we encountered an issue where authentication failures (401 Unauthorized) were causing **async generator cleanup errors** in the underlying MCP Python client library instead of proper error propagation.
 
 #### Symptoms
 ```
