@@ -1,6 +1,6 @@
 [project]
 name = "langchain-mcp-tools"
-version = "0.2.4"
+version = "0.2.5"
 description = "Model Context Protocol (MCP) To LangChain Tools Conversion Utility"
 keywords = [
     "modelcontextprotocol",
