@@ -637,7 +637,7 @@ async def connect_to_mcp_server(
             
             if url_scheme in ["http", "https"]:
                 # HTTP/HTTPS: Handle explicit transport or auto-detection
-                if (url_config.get("__pre_validate_authentication")):
+                if (url_config.get("__pre_validate_authentication", True)):
                     # Pre-validate authentication to avoid MCP async generator cleanup bugs
                     logger.info(f'MCP server "{server_name}": Pre-validating authentication')
                     auth_valid, auth_message = await validate_auth_before_connection(
