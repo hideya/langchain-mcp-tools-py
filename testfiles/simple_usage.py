@@ -43,29 +43,29 @@ async def run() -> None:
     sse_server_process, sse_server_port = start_remote_mcp_server_locally(
         "SSE", "npx -y @h1deya/mcp-server-weather")
 
-    # ws_server_process, ws_server_port = start_remote_mcp_server_locally(
-    #     "WS", "npx -y @h1deya/mcp-server-weather")
+    ws_server_process, ws_server_port = start_remote_mcp_server_locally(
+        "WS", "npx -y @h1deya/mcp-server-weather")
 
     try:
         mcp_servers: McpServersConfig = {
-            # "filesystem": {
-            #     # "transport": "stdio",  // optional
-            #     # "type": "stdio",  // optional: VSCode-style config works too
-            #     "command": "npx",
-            #     "args": [
-            #         "-y",
-            #         "@modelcontextprotocol/server-filesystem",
-            #         "."  # path to a directory to allow access to
-            #     ],
-            #     "cwd": "/tmp"  # the working dir to be use by the server
-            # },
+            "filesystem": {
+                # "transport": "stdio",  // optional
+                # "type": "stdio",  // optional: VSCode-style config works too
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@modelcontextprotocol/server-filesystem",
+                    "."  # path to a directory to allow access to
+                ],
+                "cwd": "/tmp"  # the working dir to be use by the server
+            },
 
-            # "fetch": {
-            #     "command": "uvx",
-            #     "args": [
-            #         "mcp-server-fetch"
-            #     ]
-            # },
+            "fetch": {
+                "command": "uvx",
+                "args": [
+                    "mcp-server-fetch"
+                ]
+            },
 
             # "weather": {
             #     "command": "npx",
@@ -100,15 +100,15 @@ async def run() -> None:
             
             # Example of authentication via Authorization header
             # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
-            "github": {
-                # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
-                "type": "http",
-                # "__pre_validate_authentication": False,
-                "url": "https://api.githubcopilot.com/mcp/",
-                # "headers": {
-                #     "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
-                # }
-            },
+            # "github": {
+            #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
+            #     "type": "http",
+            #     # "__pre_validate_authentication": False,
+            #     "url": "https://api.githubcopilot.com/mcp/",
+            #     "headers": {
+            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+            #     }
+            # },
         }
 
         # If you are interested in MCP server's stderr redirection,
