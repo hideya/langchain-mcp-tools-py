@@ -5,8 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.6] - 2025-06-27
 
-## [Unreleased]
+### Changed
+- Update dependencies
+
+
+## [0.2.5] - 2025-06-27
 
 ### Added
 - Streamable HTTP Support with MCP 2025-03-26 backwards compatibility guidelines
@@ -19,8 +24,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Update all documentation to include Streamable HTTP Support
 - Improve logging to show detailed transport selection reasoning
 - Rename testfiles/sse-auth-test-{client,server}.py to use "_" instead of "-" 
-
-### Fixed
 - Update dependencies
 
 
