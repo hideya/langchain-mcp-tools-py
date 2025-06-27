@@ -13,3 +13,6 @@ __pycache__/
 docs/_build/
 docs/modules/__pycache__/
 docs/*.pyc
+
+# Test token file
+.test_token

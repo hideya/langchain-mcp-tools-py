@@ -1,6 +1,7 @@
 # Standard library imports
 import asyncio
 import logging
+import os
 import sys
 from contextlib import ExitStack
 
@@ -26,7 +27,8 @@ from remote_server_utils import start_remote_mcp_server_locally
 # A very simple logger
 def init_logger() -> logging.Logger:
     logging.basicConfig(
-        level=logging.INFO,  # logging.DEBUG,
+        # level=logging.DEBUG,
+        level=logging.INFO,
         format="\x1b[90m%(levelname)s:\x1b[0m %(message)s"
     )
     return logging.getLogger()
@@ -34,11 +36,9 @@ def init_logger() -> logging.Logger:
 
 async def run() -> None:
     load_dotenv()
-    bearer_token = "token42"
-    # If you are interested in testing the SSE/WS server connection,
-    # uncomment one of the following code snippets and one of the
-    # appropriate "weather" server configurations, while commenting
-    # out the one for the stdio server
+    # If you are interested in testing the SSE/WS server connection, uncomment
+    # one of the following code snippets and one of the appropriate "weather"
+    # server configurations, while commenting out the others.
 
     sse_server_process, sse_server_port = start_remote_mcp_server_locally(
         "SSE", "npx -y @h1deya/mcp-server-weather")
@@ -49,6 +49,8 @@ async def run() -> None:
     try:
         mcp_servers: McpServersConfig = {
             "filesystem": {
+                # "transport": "stdio",  // optional
+                # "type": "stdio",  // optional: VSCode-style config works too
                 "command": "npx",
                 "args": [
                     "-y",
@@ -57,12 +59,14 @@ async def run() -> None:
                 ],
                 "cwd": "/tmp"  # the working dir to be use by the server
             },
+
             "fetch": {
                 "command": "uvx",
                 "args": [
                     "mcp-server-fetch"
                 ]
             },
+
             # "weather": {
             #     "command": "npx",
             #     "args": [
@@ -70,27 +74,47 @@ async def run() -> None:
             #         "@h1deya/mcp-server-weather"
             #     ]
             # },
+
+            # Auto-detection example: This will try Streamable HTTP first, then fallback to SSE
+            "weather": {
+                "url": f"http://localhost:{sse_server_port}/sse"
+            },
+            
+            # # THIS DOESN'T WORK: Example of explicit transport selection:
+            # "weather": {
+            #     "url": f"http://localhost:{streamable_http_server_port}/mcp",
+            #     "transport": "streamable_http"  # Force Streamable HTTP
+            #     # "type": "http"  # VSCode-style config also works instead of the above
+            # },
+            
             # "weather": {
             #     "url": f"http://localhost:{sse_server_port}/sse",
-            #     # only tests syntax, not functionality
-            #     "headers": {"Authorization": f"Bearer {bearer_token}"}
+            #     "transport": "sse"  # Force SSE
+            #     # "type": "sse"  # This also works instead of the above
             # },
-            "weather": {
-                "url": f"ws://localhost:{ws_server_port}/message"
-            },
+
+            # "weather": {
+            #     "url": f"ws://localhost:{ws_server_port}/message"
+            #     # optionally `"transport": "ws"` or `"type": "ws"`
+            # },
+            
+            # Example of authentication via Authorization header
+            # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
+            # "github": {
+            #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
+            #     "type": "http",
+            #     # "__pre_validate_authentication": False,
+            #     "url": "https://api.githubcopilot.com/mcp/",
+            #     "headers": {
+            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+            #     }
+            # },
         }
 
         # If you are interested in MCP server's stderr redirection,
         # uncomment the following code snippets.
-
+        #
         # Set a file-like object to which MCP server's stderr is redirected
-        # NOTE: Why the key name `errlog` for `server_config` was chosen:
-        # Unlike TypeScript SDK's `StdioServerParameters`, the Python
-        # SDK's `StdioServerParameters` doesn't include `stderr: int`.
-        # Instead, it calls `stdio_client()` with a separate argument
-        # `errlog: TextIO`.  I once included `stderr: int` for
-        # compatibility with the TypeScript version, but decided to
-        # follow the Python SDK more closely.
         log_file_exit_stack = ExitStack()
         for server_name in mcp_servers:
             server_config = mcp_servers[server_name]
@@ -107,18 +131,35 @@ async def run() -> None:
             # init_logger()
         )
 
-        # llm = init_chat_model("anthropic:claude-3-7-sonnet-latest")
-        llm = init_chat_model("openai:o3-mini")
+        ### https://docs.anthropic.com/en/docs/about-claude/pricing
+        ### https://console.anthropic.com/settings/billing
+        # llm = init_chat_model("anthropic:claude-3-5-haiku-latest")
+        # llm = init_chat_model("anthropic:claude-sonnet-4-0")
+        
+        ### https://platform.openai.com/docs/pricing
+        ### https://platform.openai.com/settings/organization/billing/overview
+        llm = init_chat_model("openai:gpt-4o-mini")
+        # llm = init_chat_model("openai:o4-mini")
+        
+        ### https://ai.google.dev/gemini-api/docs/pricing
+        ### https://console.cloud.google.com/billing
+        # llm = init_chat_model("google_genai:gemini-2.0-flash")
+        # llm = init_chat_model("google_genai:gemini-1.5-pro")
 
         agent = create_react_agent(
             llm,
             tools
         )
+        
+        print("\x1b[32m");  # color to green
+        print("\nLLM model:", getattr(llm, 'model', getattr(llm, 'model_name', 'unknown')))
+        print("\x1b[0m");  # reset the color
 
+        # query = "Tell me how LLMs work in a few sentences"
         # query = "Read the news headlines on bbc.com"
         # query = "Read and briefly summarize the LICENSE file"
         # query = "Tell me the number of directories in the current directory"
-        query = "Tomorrow's weather in SF?"
+        query = "Are there any weather alerts in California?"
 
         print("\x1b[33m")  # color to yellow
         print(query)
@@ -137,7 +178,7 @@ async def run() -> None:
         print("\x1b[0m")   # reset the color
 
     finally:
-        if cleanup is not None:
+        if "cleanup" in locals():
             await cleanup()
 
         # the following only needed when testing the `errlog` key

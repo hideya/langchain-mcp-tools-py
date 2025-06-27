@@ -1,12 +1,18 @@
 # MCP To LangChain Tools Conversion Utility [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/)
 
-## NOTE
+A simple, lightweight library intended to simplify the use of
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+server tools with LangChain.
 
-LangChain's official **LangChain MCP Adapters** library has been released at:
+Its simplicity and extra features for stdio MCP servers can make it useful as a basis for your own customizations.
+However, it only supports text results of tool calls and does not support MCP features other than tools.
+
+LangChain's **official LangChain.js MCP Adapters** library,
+which supports comprehensive integration with LangChain, has been released at:
 - pypi: https://pypi.org/project/langchain-mcp-adapters/
 - github: https://github.com/langchain-ai/langchain-mcp-adapters
 
-You may want to consider using the above if you don't have specific needs for using this library...
+You may want to consider using the above if you don't have specific needs for this library.
 
 ## Introduction
 
@@ -14,23 +20,17 @@ This package is intended to simplify the use of
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server tools with LangChain / Python.
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/),
-an open standard
-[announced by Anthropic](https://www.anthropic.com/news/model-context-protocol),
-dramatically expands LLM’s scope
-by enabling external tool and resource integration, including
-GitHub, Google Drive, Slack, Notion, Spotify, Docker, PostgreSQL, and more…
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is the de facto industry standard
+that dramatically expands the scope of LLMs by enabling the integration of external tools and resources,
+including DBs, GitHub, Google Drive, Docker, Slack, Notion, Spotify, and more.
 
-MCP is likely to become the de facto industry standard as 
-[OpenAI has announced its adoption](https://techcrunch.com/2025/03/26/openai-adopts-rival-anthropics-standard-for-connecting-ai-models-to-data).
-
-Over 2000 functional components available as MCP servers:
+There are quite a few useful MCP servers already available:
 
 - [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers)
 - [MCP.so - Find Awesome MCP Servers and Clients](https://mcp.so/)
 - [Smithery: MCP Server Registry](https://smithery.ai/)
 
-The goal of this utility is to make these 2000+ MCP servers readily accessible from LangChain.
+This utility's goal is to make these massive numbers of MCP servers easily accessible from LangChain.
 
 It contains a utility function `convert_mcp_to_langchain_tools()`.  
 This async function handles parallel initialization of specified multiple MCP servers
@@ -77,7 +77,14 @@ mcp_servers = {
     "fetch": {
         "command": "uvx",
         "args": ["mcp-server-fetch"]
-    }
+    },
+    "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+        }
+    },
 }
 
 tools, cleanup = await convert_mcp_to_langchain_tools(
@@ -97,7 +104,7 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model("anthropic:claude-3-7-sonnet-latest")
+llm = init_chat_model("anthropic:claude-sonnet-4-0")
 
 # from langgraph.prebuilt import create_react_agent
 agent = create_react_agent(
@@ -112,48 +119,31 @@ try [this LangChain application built with the utility](https://github.com/hidey
 For detailed information on how to use this library, please refer to the following document:  
 ["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
 
-## Experimental Features
+## Building from Source
 
-### Remote MCP Server Support
+See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
 
-`mcp_servers` configuration for SSE and Websocket servers are as follows:
+## MCP Protocol Support
 
-```python
-    "sse-server-name": {
-        "url": f"http://{sse_server_host}:{sse_server_port}/..."
-    },
+This library supports **MCP Protocol version 2025-03-26** and maintains backwards compatibility with version 2024-11-05.
+It follows the [official MCP specification](https://modelcontextprotocol.io/specification/2025-03-26/) for transport selection and backwards compatibility.
 
-    "ws-server-name": {
-        "url": f"ws://{ws_server_host}:{ws_server_port}/..."
-    },
-```
+## Features
 
-Note that the key `"url"` may be changed in the future to match
-the MCP server configurations used by Claude for Desktop once
-it introduces remote server support.
+### stderr Redirection for Local MCP Server
 
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L43-L54)
-
-### Authentication Support for SSE Connections
-
-A new key `"headers"` has been introduced to pass HTTP headers to the SSE (Server-Sent Events) connection.  
-It takes  `dict[str, str]` and is primarily intended to support SSE MCP servers
-that require authentication via bearer tokens or other custom headers.
+A new key `"errlog"` has been introduced to specify a file-like object
+to which local (stdio) MCP server's stderr is redirected.
 
 ```python
-    "sse-server-name": {
-        "url": f"http://{sse_server_host}:{sse_server_port}/..."
-        "headers": {"Authorization": f"Bearer {bearer_token}"}
-    },
+    log_path = f"mcp-server-{server_name}.log"
+    log_file = open(log_path, "w")
+    mcp_servers[server_name]["errlog"] = log_file
 ```
 
-The key name `header` is derived from the Python SDK
-[`sse_client()`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/sse.py#L24) argument name.
-
-A simple example showing how to implement MCP SSE server and client with authentication can be found
-in [sse-auth-test-client.py](https://github.com/hideya/langchain-mcp-tools-py-usage/tree/main/src/sse-auth-test-client.py)
-and in [sse-auth-test-server.py](https://github.com/hideya/langchain-mcp-tools-py-usage/tree/main/src/sse-auth-test-server.py)
-of [this usage examples repo](https://github.com/hideya/langchain-mcp-tools-py-usage).
+A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108).  
+The key name `errlog` is derived from
+[`stdio_client()`'s argument `errlog`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
 
 ### Working Directory Configuration for Local MCP Servers
 
@@ -171,33 +161,195 @@ can be specified with the `"cwd"` key as follows:
 The key name `cwd` is derived from
 Python SDK's [`StdioServerParameters`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L76-L77).
 
-### stderr Redirection for Local MCP Server
+**Note:** The library automatically adds the `PATH` environment variable to stdio servers if not explicitly provided to ensure servers can find required executables.
 
-A new key `"errlog"` has been introduced to specify a file-like object
-to which local (stdio) MCP server's stderr is redirected.
+### Transport Selection Priority
 
-```python
-    log_path = f"mcp-server-{server_name}.log"
-    log_file = open(log_path, "w")
-    mcp_servers[server_name]["errlog"] = log_file
+The library selects transports using the following priority order:
+
+1. **Explicit transport/type field** (must match URL protocol if URL provided)
+2. **URL protocol auto-detection** (http/https → StreamableHTTP → SSE, ws/wss → WebSocket)
+3. **Command presence** → Stdio transport
+4. **Error** if none of the above match
+
+This ensures predictable behavior while allowing flexibility for different deployment scenarios.
+
+### Remote MCP Server Support
+
+`mcp_servers` configuration for Streamable HTTP, SSE (Server-Sent Events) and Websocket servers are as follows:
+
+```py
+    # Auto-detection: tries Streamable HTTP first, falls back to SSE on 4xx errors
+    "auto-detect-server": {
+       "url": f"http://{server_host}:{server_port}/..."
+    },
+
+    # Explicit Streamable HTTP
+    "streamable-http-server": {
+        "url": f"http://{server_host}:{server_port}/...",
+        "transport": "streamable_http"
+        # "type": "http"  # VSCode-style config also works instead of the above
+    },
+
+    # Explicit SSE
+    "sse-server-name": {
+        "url": f"http://{sse_server_host}:{sse_server_port}/...",
+        "transport": "sse"  # or `"type": "sse"`
+    },
+
+    # WebSocket
+    "ws-server-name": {
+        "url": f"ws://${ws_server_host}:${ws_server_port}/..."
+        # optionally `"transport": "ws"` or `"type": "ws"`
+    },
 ```
 
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108)
+The `"headers"` key can be used to pass HTTP headers to Streamable HTTP and SSE connection.  
 
-**NOTE: Why the key name `errlog` was chosen:**  
-Unlike TypeScript SDK's `StdioServerParameters`, the Python
-SDK's `StdioServerParameters` doesn't include `stderr: int`.  
-Instead, it calls [`stdio_client()` with a separate argument
-`errlog: TextIO`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
-I once included `stderr: int` for
-compatibility with the TypeScript version, but decided to
-follow the Python SDK more closely.
+```py
+    "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+        }
+    },
+```
+
+NOTE: When accessing the GitHub MCP server, [GitHub PAT (Personal Access Token)](https://github.com/settings/personal-access-tokens)
+alone is not enough; your GitHub account must have an active Copilot subscription or be assigned a Copilot license through your organization.
+
+**Auto-detection behavior (default):**
+- For HTTP/HTTPS URLs without explicit `transport`, the library follows [MCP specification recommendations](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#backwards-compatibility)
+- First attempts Streamable HTTP transport
+- If Streamable HTTP fails with a 4xx error, automatically falls back to SSE transport
+- Non-4xx errors (network issues, etc.) are re-thrown without fallback
+
+**Explicit transport selection:**
+- Set `"transport": "streamable_http"` (or VSCode-style config `"type": "http"`) to force Streamable HTTP (no fallback)
+- Set `"transport": "sse"` to force SSE transport
+- WebSocket URLs (`ws://` or `wss://`) always use WebSocket transport
+
+Streamable HTTP is the modern MCP transport that replaces the older HTTP+SSE transport. According to the [official MCP documentation](https://modelcontextprotocol.io/docs/concepts/transports): "SSE as a standalone transport is deprecated as of protocol version 2025-03-26. It has been replaced by Streamable HTTP, which incorporates SSE as an optional streaming mechanism."
+
+### Authentication Support for Streamable HTTP Connections
+
+The library supports OAuth 2.1 authentication for Streamable HTTP connections:
+
+```py
+from mcp.client.auth import OAuthClientProvider
+...
+
+    # Create OAuth authentication provider
+    oauth_auth = OAuthClientProvider(
+        server_url="https://...",
+        client_metadata=...,
+        storage=...,
+        redirect_handler=...,
+        callback_handler=...,
+    )
+
+    # Test configuration with OAuth auth
+    mcp_servers = {
+        "secure-streamable-server": {
+            "url": "https://.../mcp/",
+            "auth": oauth_auth,
+            "timeout": 30.0
+        },
+    }
+```
+
+Test implementations are provided:
+
+- **Streamable HTTP Authentication Tests**:
+  - MCP client uses this library: [streamable_http_oauth_test_client.py](https://github.com/hideya/langchain-mcp-tools-py/tree/main/testfiles/streamable_http_oauth_test_client.py)
+  - Test MCP Server:  [streamable_http_oauth_test_server.py](https://github.com/hideya/langchain-mcp-tools-py/tree/main/testfiles/streamable_http_oauth_test_server.py)
+
+### Authentication Support for SSE Connections (Legacy)
+
+The library also supports authentication for SSE connections to MCP servers.
+Note that SSE transport is deprecated; Streamable HTTP is the recommended approach.
 
 ## Limitations
 
-- Currently, only text results of tool calls are supported.
-- MCP features other than [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are not supported.
+- **Tool Return Types**: Currently, only text results of tool calls are supported.
+The library uses LangChain's `response_format: 'content'` (the default), which only supports text strings.
+While MCP tools can return multiple content types (text, images, etc.), this library currently filters and uses only text content.
+- **MCP Features**: Only MCP [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are supported. Other MCP features like Resources, Prompts, and Sampling are not implemented.
 
 ## Change Log
 
 Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)
+
+## Appendix
+
+### Troubleshooting Authentication Issues
+
+When authentication errors occur, they often generate massive logs that make it difficult to identify that authentication is the root cause.
+
+To address this problem, this library performs authentication pre-validation for HTTP/HTTPS MCP servers before attempting the actual MCP connection.
+This ensures that clear error messages like `Authentication failed (401 Unauthorized)` or `Authentication failed (403 Forbidden)` appear at the end of the logs, rather than being buried in the middle of extensive error output.
+
+**Important:** This pre-validation is specific to this library and not part of the official MCP specification.
+In rare cases, it may interfere with certain MCP server behaviors.
+
+#### When and How to Disable Pre-validation
+Set `"__pre_validate_authentication": False` in your server config if:
+- Using OAuth flows that require complex authentication handshakes
+- The MCP server doesn't accept simple HTTP POST requests for validation
+- You're experiencing false negatives in the auth validation
+
+**Example:**
+```python
+"oauth-server": {
+    "url": "https://api.example.com/mcp/",
+    "auth": oauth_provider,  # Complex OAuth provider
+    "__pre_validate_authentication": False  # Skip the pre-validation
+}
+```
+
+#### Debugging Authentication
+1. **Check your tokens/credentials** - Most auth failures are due to expired or incorrect tokens
+2. **Verify token permissions** - Some MCP servers require specific scopes (e.g., GitHub Copilot license)
+3. **Test with curl** - Try a simple HTTP request to verify your auth setup:
+   ```bash
+   curl -H "Authorization: Bearer your-token" https://api.example.com/mcp/
+   ```
+
+### Transport Selection Issues
+
+The library automatically selects the appropriate transport based on your configuration:
+
+1. **Explicit transport field** takes priority
+2. **URL protocol detection** (http/https → Streamable HTTP → SSE fallback, ws/wss → WebSocket)
+3. **Command presence** → stdio transport
+
+#### Common Issues
+- **Both url and command specified**: Choose one approach per server
+- **Transport/URL mismatch**: e.g., `"transport": "websocket"` with `"url": "https://..."`
+- **Missing required fields**: Must have either `url` or `command`
+
+#### Auto-detection vs Explicit
+For HTTP servers, the library tries Streamable HTTP first, then falls back to SSE on 4xx errors (per MCP specification). Use explicit `"transport"` if you want to skip auto-detection.
+
+### Debug Mode
+
+For detailed debugging, enable debug logging:
+
+```python
+import logging
+logging.getLogger("langchain_mcp_tools").setLevel(logging.DEBUG)
+
+# Also useful for transport debugging:
+logging.getLogger("mcp").setLevel(logging.DEBUG)
+```
+
+This will show:
+- Transport selection decisions
+- Authentication validation attempts
+- Tool discovery and conversion steps
+- Connection establishment details
+
+### For Developers
+
+For deeper technical details about implementation challenges and solutions, see [TECHNICAL.md](TECHNICAL.md).

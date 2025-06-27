@@ -5,10 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## [Unreleased]
 
+### Added
+- Streamable HTTP Support with MCP 2025-03-26 backwards compatibility guidelines
+- Test servers and clients for Streamable HTTP
+- Support for Google GenAI LLMs
+- McpInitializationError for configuration and connection errors
+- TECHNOCAL.md that explains the implemenation details
+
 ### Changed
+- Update all documentation to include Streamable HTTP Support
+- Improve logging to show detailed transport selection reasoning
+- Rename testfiles/sse-auth-test-{client,server}.py to use "_" instead of "-" 
+
+### Fixed
 - Update dependencies
+
 
 ## [0.2.4] - 2025-04-24
 
