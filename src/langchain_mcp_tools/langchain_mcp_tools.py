@@ -409,7 +409,7 @@ async def test_streamable_http_support(
         request_headers.update(headers)
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             logger.debug(f"Testing Streamable HTTP: POST InitializeRequest to {url}")
             response = await client.post(
                 url,
