@@ -14,7 +14,7 @@ This document contains important implementation details, design decisions, and l
 
 ### The Problem We Discovered
 
-During development, we encountered an issue where authentication failures (401 Unauthorized) were causing **async generator cleanup errors** in the underlying MCP Python client library instead of proper error propagation.
+During development, we encountered an issue where authentication failures (401 Unauthorized) were causing **async generator cleanup errors** in the underlying MCP Python client library, which retsults in massive logs that make it difficult to identify that authentication is the root cause.
 
 #### Symptoms
 ```
@@ -37,7 +37,7 @@ asyncgen: <async_generator object streamablehttp_client at 0x...>
 
 #### Root Cause Analysis
 
-1. **MCP Client Library Bug**: The `streamablehttp_client` async generator has improper cleanup handling when authentication fails during the connection setup phase.
+1. **MCP Client Library Issue?**: The `streamablehttp_client` async generator may have improper cleanup handling when authentication fails during the connection setup phase.
 
 2. **Exception Propagation Failure**: Instead of properly propagating the `HTTPStatusError`, the async generator cleanup failure masks the real authentication error.
 
@@ -45,7 +45,8 @@ asyncgen: <async_generator object streamablehttp_client at 0x...>
 
 ### Our Solution: Authentication Pre-validation
 
-We implemented `validate_auth_before_connection()` to detect authentication issues **before** they can trigger the MCP library's problematic async generator cleanup.
+We implemented `validate_auth_before_connection()` to detect authentication issues **before** attempting the actual MCP connection.
+This ensures that clear error messages like `Authentication failed (401 Unauthorized)` or `Authentication failed (403 Forbidden)` appear at the end of the logs, rather than being buried in the middle of extensive error output.
 
 #### How It Works
 
@@ -64,8 +65,7 @@ async def validate_auth_before_connection(
 
 1. **Uses Proper MCP Protocol**: Sends a valid MCP `InitializeRequest` to test authentication
 2. **Detects Auth Failures Early**: Catches 401, 402, 403 errors before MCP connection
-3. **Prevents Async Generator Issues**: Avoids triggering the buggy cleanup code path
-4. **Provides Clear Errors**: Returns descriptive error messages for users
+3. **Provides Clear Errors**: Returns descriptive error messages for users
 
 #### Integration Pattern
 
@@ -85,20 +85,6 @@ if url_scheme in ["http", "https"]:
         streamablehttp_client(url_str, **kwargs)
     )
 ```
-
-### Results
-
-✅ **Authentication errors are now caught early and provide clear messages**  
-✅ **No more cryptic async generator cleanup errors**  
-✅ **Better user experience with actionable error messages**  
-✅ **Maintains compatibility with all MCP transport types**
-
-### Lessons Learned
-
-1. **Third-party Library Issues**: Even well-maintained libraries can have edge cases with async/await patterns
-2. **Error Masking**: Cleanup failures can mask the real underlying errors
-3. **Pre-validation Strategy**: Sometimes it's better to validate separately than rely on library error handling
-4. **User Experience Priority**: Clear error messages are crucial for developer productivity
 
 ## Error Handling Strategy
 

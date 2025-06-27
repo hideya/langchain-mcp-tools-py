@@ -302,7 +302,7 @@ Set `"__pre_validate_authentication": False` in your server config if:
 **Example:**
 ```python
 "oauth-server": {
-    "url": "https://api.example.com/mcp",
+    "url": "https://api.example.com/mcp/",
     "auth": oauth_provider,  # Complex OAuth provider
     "__pre_validate_authentication": False  # Skip the pre-validation
 }
@@ -350,6 +350,6 @@ This will show:
 - Tool discovery and conversion steps
 - Connection establishment details
 
-#### For Developers
+### For Developers
 
 For deeper technical details about implementation challenges and solutions, see [TECHNICAL.md](TECHNICAL.md).
