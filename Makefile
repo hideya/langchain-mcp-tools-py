@@ -51,31 +51,11 @@ test: install-dev
 run-simple-usage: install-dev
 	uv run testfiles/simple_usage.py
 
-run-streamable-http-stateless-test-server: install-dev
-	uv run testfiles/streamable_http_stateless_test_server.py
+run-%-test-server: install-dev
+	uv run testfiles/$(shell echo $* | tr '-' '_')_test_server.py
 
-run-streamable-http-stateless-test-client: install-dev
-	uv run testfiles/streamable_http_stateless_test_client.py
-
-run-streamable-http-bearer_auth-test-server: install-dev
-	uv run testfiles/streamable_http_bearer_auth_test_server.py
-
-run-streamable-http-bearer_auth-test-client: install-dev
-	uv run testfiles/streamable_http_bearer_auth_test_client.py
-
-run-streamable-http-oauth-test-server: install-dev
-	uv run testfiles/streamable_http_bearer_auth_test_server.py
-
-run-streamable-http-oauth-test-client: install-dev
-	uv run testfiles/streamable_http_bearer_auth_test_client.py
-
-run-sse-auth-test-server: install
-	uv pip install -e ".[dev]"
-	uv run testfiles/sse_auth_test_server.py
-
-run-sse-auth-test-client: install
-	uv pip install -e ".[dev]"
-	uv run testfiles/sse_auth_test_client.py
+run-%-test-client: install-dev
+	uv run testfiles/$(shell echo $* | tr '-' '_')_test_client.py
 
 sphinx: install
 	make -C docs clean html
