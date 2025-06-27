@@ -102,8 +102,8 @@ class McpServerUrlBasedConfig(TypedDict):
                 use http:// or https:// prefix. For WebSocket servers,
                 use ws:// or wss:// prefix.
         transport: Optional transport type. Supported values:
-                "streamable_http" (recommended, attempted first), 
-                "sse" (legacy, fallback), "websocket"
+                "streamable_http" or "http" (recommended, attempted first), 
+                "sse" (deprecated, fallback), "websocket"
         headers: Optional dictionary of HTTP headers to include in the request,
                 typically used for authentication (e.g., bearer tokens).
         timeout: Optional timeout for HTTP requests (default: 30.0 seconds).
@@ -111,6 +111,9 @@ class McpServerUrlBasedConfig(TypedDict):
         terminate_on_close: Optional flag to terminate on connection close.
         httpx_client_factory: Optional factory for creating HTTP clients.
         auth: Optional httpx authentication for requests.
+        __pre_validate_authentication: Optional flag to skip auth validation
+                (default: True). Set to False for OAuth flows that require
+                complex authentication flows.
 
     Example for auto-detection (recommended):
         {
@@ -142,7 +145,8 @@ class McpServerUrlBasedConfig(TypedDict):
         }
     """
     url: str
-    transport: NotRequired[str]
+    transport: NotRequired[str]  # Preferred field name
+    type: NotRequired[str]  # Alternative field name for compatibility
     headers: NotRequired[dict[str, str] | None]
     timeout: NotRequired[float]
     sse_read_timeout: NotRequired[float]
@@ -289,6 +293,7 @@ async def validate_auth_before_connection(
     
     For OAuth authentication, this function skips validation since OAuth requires
     a complex flow that cannot be pre-validated with a simple HTTP request.
+    Use __pre_validate_authentication=False to skip this validation.
     
     Args:
         url_str: The MCP server URL to test
@@ -644,7 +649,7 @@ async def connect_to_mcp_server(
             
             if url_scheme in ["http", "https"]:
                 # HTTP/HTTPS: Handle explicit transport or auto-detection
-                if (url_config.get("__pre_validate_authentication", True)):
+                if url_config.get("__pre_validate_authentication", True):
                     # Pre-validate authentication to avoid MCP async generator cleanup bugs
                     logger.info(f'MCP server "{server_name}": Pre-validating authentication')
                     auth_valid, auth_message = await validate_auth_before_connection(
@@ -682,7 +687,7 @@ async def connect_to_mcp_server(
                     logger.info(f'MCP server "{server_name}": '
                                f"connecting via SSE (explicit) to {url_str}")
                     logger.warning(f'MCP server "{server_name}": '
-                                  f"SSE transport is deprecated, consider migrating to streamable_http")
+                                  f"Using SSE transport (deprecated as of MCP 2025-03-26), consider migrating to streamable_http")
                     
                     transport = await exit_stack.enter_async_context(
                         sse_client(url_str, headers=headers)
@@ -725,7 +730,7 @@ async def connect_to_mcp_server(
                             logger.info(f'MCP server "{server_name}": '
                                        f"received 4xx error, falling back to SSE transport")
                             logger.warning(f'MCP server "{server_name}": '
-                                          f"Using SSE transport (deprecated), server should support Streamable HTTP")
+                                          f"Using SSE transport (deprecated as of MCP 2025-03-26), server should support Streamable HTTP")
                             
                             transport = await exit_stack.enter_async_context(
                                 sse_client(url_str, headers=headers)
@@ -845,6 +850,7 @@ async def get_mcp_server_tools(
     """
     try:
         # Handle both 2-tuple (SSE, stdio) and 3-tuple (streamable HTTP) returns
+        # Third element in streamable HTTP contains session info/metadata
         if len(transport) == 2:
             read, write = transport
         elif len(transport) == 3:
