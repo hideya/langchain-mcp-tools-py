@@ -285,20 +285,13 @@ Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/C
 
 ### Troubleshooting Authentication Issues
 
-When Authentication error happens, massive logs will be generated,
-which make it hard to identify that authentication is the root cause.
+When authentication errors occur, they often generate massive logs that make it difficult to identify that authentication is the root cause.
 
-In such a case, check around the end of the log messages.
-You will see messages like `Authentication failed (401 Unauthorized)` or
-`Authentication failed (403 Forbidden)`.
+To address this problem, this library performs authentication pre-validation for HTTP/HTTPS MCP servers before attempting the actual MCP connection.
+This ensures that clear error messages like `Authentication failed (401 Unauthorized)` or `Authentication failed (403 Forbidden)` appear at the end of the logs, rather than being buried in the middle of extensive error output.
 
-In order to print these key error message at the very end of the logs,
-this library performs extra authentication pre-validation for HTTP / HTTPS MCP servers
-before attempting the actual MCP connection.
-Without this approach, the authentication error will be burried in middle of the massive logs.
-
-However, note that this pre-validation can interffere MCP servers behavior,
-as this is not a part of the MCP spec and is spefic to this library.
+**Important:** This pre-validation is specific to this library and not part of the official MCP specification.
+In rare cases, it may interfere with certain MCP server behaviors.
 
 #### When and How to Disable Pre-validation
 Set `"__pre_validate_authentication": False` in your server config if:
@@ -316,7 +309,7 @@ Set `"__pre_validate_authentication": False` in your server config if:
 ```
 
 #### Debugging Authentication
-1. **Check your tokens / credentials** - Most auth failures are due to expired or incorrect tokens
+1. **Check your tokens/credentials** - Most auth failures are due to expired or incorrect tokens
 2. **Verify token permissions** - Some MCP servers require specific scopes (e.g., GitHub Copilot license)
 3. **Test with curl** - Try a simple HTTP request to verify your auth setup:
    ```bash
