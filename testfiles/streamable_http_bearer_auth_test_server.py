@@ -5,14 +5,15 @@ Using FastMCP 2.0's built-in BearerAuthProvider - this is the best practice!
 """
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import BearerAuthProvider, RSAKeyPair
+from fastmcp.server.auth import BearerAuthProvider
+from fastmcp.server.auth.providers.bearer import RSAKeyPair  # 👈 Correct import path!
 
 # For testing, generate a key pair (use external OAuth in production)
 key_pair = RSAKeyPair.generate()
 
 # Create the auth provider
 auth = BearerAuthProvider(
-    public_key=key_pair.public_key_pem,
+    public_key=key_pair.public_key,  # Note: use .public_key, not .public_key_pem
     # Optional: additional validation
     issuer="test-auth-server",
     audience="mcp-test-client"
@@ -57,7 +58,7 @@ if __name__ == "__main__":
         issuer="test-auth-server",
         audience="mcp-test-client",
         subject="test-user",
-        extra_claims={"scope": "read write"}
+        # Note: scopes parameter might be different, let's try without extra_claims first
     )
     print(f"🔑 Test token: {test_token}")
     print("-" * 70)

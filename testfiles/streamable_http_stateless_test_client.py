@@ -7,10 +7,10 @@ It demonstrates both single server and multi-server configurations.
 
 Usage:
     # First start a test server in another terminal:
-    python simple_stateless_server.py
+    uv run testfiles/streamable_http_stateless_test_server.py
     
     # Then run this test client:
-    python test_client.py
+    uv run testfiles/streamable_http_stateless_test_client.py
 """
 
 import asyncio
@@ -65,10 +65,10 @@ async def test_simple_server():
                 print(f"  echo('Hello MCP!') = {result}")
         
         await cleanup()
-        print("✅ Simple server test completed successfully")
+        print("\n\n✅ Simple server test completed successfully\n")
         
     except Exception as e:
-        print(f"❌ Error testing simple server: {e}")
+        print(f"\n\n❌ Error testing simple server: {e}\n")
 
 
 async def main():
