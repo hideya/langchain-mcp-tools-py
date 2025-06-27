@@ -287,24 +287,31 @@ async def validate_auth_before_connection(
     by detecting authentication failures early, before the problematic MCP transport
     creation process begins.
     
-    Sends a proper MCP InitializeRequest to test authentication and server response.
+    For OAuth authentication, this function skips validation since OAuth requires
+    a complex flow that cannot be pre-validated with a simple HTTP request.
     
     Args:
         url_str: The MCP server URL to test
         headers: Optional HTTP headers (typically containing Authorization)
         timeout: Request timeout in seconds
-        auth: Optional httpx authentication object
+        auth: Optional httpx authentication object (OAuth providers are skipped)
         logger: Logger for debugging
         
     Returns:
         Tuple of (success: bool, message: str) where:
-        - success=True means authentication is valid
+        - success=True means authentication is valid or OAuth (skipped)
         - success=False means authentication failed with descriptive message
         
     Note:
-        This function only validates authentication (401, 402, 403 errors).
-        Other errors like connection failures are returned as (False, error_message).
+        This function only validates simple authentication (401, 402, 403 errors).
+        OAuth authentication is skipped since it requires complex flows.
     """
+    
+    # Skip auth validation for all httpx.Auth providers
+    if auth is not None:
+        auth_class_name = auth.__class__.__name__
+        logger.info(f"Skipping auth validation for httpx.Auth provider: {auth_class_name}")
+        return True, "httpx.Auth authentication skipped (requires full flow)"
     
     # Create InitializeRequest as per MCP specification (similar to test_streamable_http_support)
     init_request = {

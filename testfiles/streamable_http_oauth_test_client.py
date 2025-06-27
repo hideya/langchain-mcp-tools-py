@@ -172,7 +172,7 @@ async def test_oauth_authentication():
             finally:
                 pass  # Don't stop server here, let finally block handle it
 
-        def redirect_handler(authorization_url: str) -> None:
+        async def redirect_handler(authorization_url: str) -> None:
             """Redirect handler that opens the URL in a browser."""
             print(f"🌐 Opening browser for OAuth authorization...")
             print(f"   URL: {authorization_url}")

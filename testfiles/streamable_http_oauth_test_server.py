@@ -86,11 +86,13 @@ async def authorization_server_metadata():
     - PKCE support (code_challenge_methods_supported: S256)
     - Secure grant types only (no implicit, password grants)
     - Authorization code flow with refresh tokens
+    - Dynamic client registration (RFC 7591)
     """
     return {
         "issuer": "http://localhost:8003",
         "authorization_endpoint": "http://localhost:8003/authorize",
         "token_endpoint": "http://localhost:8003/token",
+        "registration_endpoint": "http://localhost:8003/register",  # RFC 7591: Dynamic Client Registration
         "response_types_supported": ["code"],  # OAuth 2.1: code flow only
         "grant_types_supported": ["authorization_code", "refresh_token"],  # OAuth 2.1: secure grants only
         "code_challenge_methods_supported": ["S256"],  # OAuth 2.1: PKCE support
@@ -140,6 +142,63 @@ async def authorize(
     
     redirect_url = f"{redirect_uri}?{urlencode(params)}"
     return RedirectResponse(url=redirect_url)
+
+@app.post("/register")
+async def register_client(request: Request):
+    """OAuth 2.0 Dynamic Client Registration (RFC 7591).
+    
+    This endpoint allows OAuth clients to register themselves dynamically
+    without requiring pre-configuration. This is commonly used by OAuth
+    client libraries like the MCP Python SDK.
+    """
+    try:
+        data = await request.json()
+        
+        # Generate unique client credentials
+        client_id = f"dynamic-client-{secrets.token_hex(8)}"
+        client_secret = secrets.token_urlsafe(32)
+        
+        # Validate required fields
+        redirect_uris = data.get("redirect_uris", [])
+        if not redirect_uris:
+            raise HTTPException(status_code=400, detail="redirect_uris is required")
+        
+        # Create client configuration
+        client_info = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uris": redirect_uris,
+            "grant_types": data.get("grant_types", ["authorization_code"]),
+            "response_types": data.get("response_types", ["code"]),
+            "scopes": data.get("scope", "read write").split() if isinstance(data.get("scope"), str) else data.get("scope", ["read", "write"]),
+            "client_name": data.get("client_name", "Dynamic MCP Client"),
+            "token_endpoint_auth_method": data.get("token_endpoint_auth_method", "client_secret_post")
+        }
+        
+        # Store the dynamically registered client
+        clients[client_id] = client_info
+        
+        print(f"🔧 Dynamically registered new client: {client_id}")
+        print(f"   Name: {client_info['client_name']}")
+        print(f"   Redirect URIs: {redirect_uris}")
+        
+        # Return client registration response (RFC 7591)
+        return {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uris": client_info["redirect_uris"],
+            "grant_types": client_info["grant_types"],
+            "response_types": client_info["response_types"],
+            "scope": " ".join(client_info["scopes"]),
+            "token_endpoint_auth_method": client_info["token_endpoint_auth_method"],
+            "client_name": client_info["client_name"]
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}")
+    except Exception as e:
+        print(f"❌ Client registration error: {e}")
+        raise HTTPException(status_code=400, detail=f"Registration failed: {e}")
 
 @app.post("/token")
 async def token_endpoint(
@@ -244,6 +303,7 @@ async def root():
         "oauth_endpoints": {
             "authorization": "/authorize",
             "token": "/token",
+            "registration": "/register",
             "metadata": "/.well-known/oauth-authorization-server"
         },
         "mcp_endpoint": "/mcp",
@@ -267,6 +327,7 @@ if __name__ == "__main__":
     print("🔑 OAuth Endpoints:")
     print("  • Authorization: http://localhost:8003/authorize")
     print("  • Token: http://localhost:8003/token")
+    print("  • Registration: http://localhost:8003/register (Dynamic Client Registration)")
     print("  • Metadata: http://localhost:8003/.well-known/oauth-authorization-server")
     print("-" * 70)
     print("🧪 Test Client Credentials:")
