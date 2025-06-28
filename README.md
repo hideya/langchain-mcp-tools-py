@@ -104,7 +104,7 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model("anthropic:claude-sonnet-4-0")
+llm = init_chat_model("google_genai:gemini-2.0-flash")
 
 # from langgraph.prebuilt import create_react_agent
 agent = create_react_agent(
@@ -127,6 +127,8 @@ See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/R
 
 This library supports **MCP Protocol version 2025-03-26** and maintains backwards compatibility with version 2024-11-05.
 It follows the [official MCP specification](https://modelcontextprotocol.io/specification/2025-03-26/) for transport selection and backwards compatibility.
+
+**Note:** The library automatically adds the `PATH` environment variable to stdio servers if not explicitly provided to ensure servers can find required executables.
 
 ## Features
 
@@ -160,8 +162,6 @@ can be specified with the `"cwd"` key as follows:
 
 The key name `cwd` is derived from
 Python SDK's [`StdioServerParameters`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L76-L77).
-
-**Note:** The library automatically adds the `PATH` environment variable to stdio servers if not explicitly provided to ensure servers can find required executables.
 
 ### Transport Selection Priority
 

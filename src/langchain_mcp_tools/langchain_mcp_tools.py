@@ -284,7 +284,8 @@ async def validate_auth_before_connection(
     headers: dict[str, str] | None = None, 
     timeout: float = 30.0,
     auth: httpx.Auth | None = None,
-    logger: logging.Logger = logging.getLogger(__name__)
+    logger: logging.Logger = logging.getLogger(__name__),
+    server_name: str = "Unknown"
 ) -> tuple[bool, str]:
     """Pre-validate authentication with a simple HTTP request before creating MCP connection.
     
@@ -302,6 +303,7 @@ async def validate_auth_before_connection(
         timeout: Request timeout in seconds
         auth: Optional httpx authentication object (OAuth providers are skipped)
         logger: Logger for debugging
+        server_name: MCP server name to be validated
         
     Returns:
         Tuple of (success: bool, message: str) where:
@@ -316,7 +318,7 @@ async def validate_auth_before_connection(
     # Skip auth validation for all httpx.Auth providers
     if auth is not None:
         auth_class_name = auth.__class__.__name__
-        logger.info(f"Skipping auth validation for httpx.Auth provider: {auth_class_name}")
+        logger.info(f'MCP server "{server_name}": Skipping auth validation for httpx.Auth provider: {auth_class_name}')
         return True, "httpx.Auth authentication skipped (requires full flow)"
     
     # Create InitializeRequest as per MCP specification (similar to test_streamable_http_support)
@@ -360,7 +362,7 @@ async def validate_auth_before_connection(
             elif response.status_code == 403:
                 return False, f"Authentication failed (403 Forbidden): {response.text if hasattr(response, 'text') else 'Unknown error'}"
 
-            logger.info(f"Authentication validation passed: {response.status_code}")
+            logger.info(f'MCP server "{server_name}": Authentication validation passed: {response.status_code}')
             return True, "Authentication validation passed"
             
     except httpx.HTTPStatusError as e:
@@ -658,7 +660,8 @@ async def connect_to_mcp_server(
                         headers=headers,
                         timeout=timeout or 30.0,
                         auth=auth,
-                        logger=logger
+                        logger=logger,
+                        server_name=server_name
                     )
 
                     if not auth_valid:
