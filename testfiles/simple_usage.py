@@ -138,12 +138,12 @@ async def run() -> None:
         
         ### https://platform.openai.com/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        llm = init_chat_model("openai:gpt-4o-mini")
+        # llm = init_chat_model("openai:gpt-4o-mini")
         # llm = init_chat_model("openai:o4-mini")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
-        # llm = init_chat_model("google_genai:gemini-2.0-flash")
+        llm = init_chat_model("google_genai:gemini-2.0-flash")
         # llm = init_chat_model("google_genai:gemini-1.5-pro")
 
         agent = create_react_agent(
