@@ -1,3 +1,13 @@
+# Public API
+__all__ = [
+    'convert_mcp_to_langchain_tools',
+    'McpServersConfig',
+    'SingleMcpServerConfig',
+    'McpServerCommandBasedConfig',
+    'McpServerUrlBasedConfig',
+    'McpInitializationError'
+]
+
 # Standard library imports
 import logging
 import os
@@ -204,7 +214,7 @@ Example:
 """
 
 
-def fix_schema(schema: dict) -> dict:
+def _fix_schema(schema: dict) -> dict:
     """Converts JSON Schema "type": ["string", "null"] to "anyOf" format.
 
     Args:
@@ -218,7 +228,7 @@ def fix_schema(schema: dict) -> dict:
             schema["anyOf"] = [{"type": t} for t in schema["type"]]
             del schema["type"]  # Remove "type" and standardize to "anyOf"
         for key, value in schema.items():
-            schema[key] = fix_schema(value)  # Apply recursively
+            schema[key] = _fix_schema(value)  # Apply recursively
     return schema
 
 
@@ -231,12 +241,12 @@ Transport: TypeAlias = tuple[
 ]
 
 
-def is_4xx_error(error: Exception) -> bool:
-    """Enhanced 4xx error detection matching TypeScript implementation.
+def _is_4xx_error(error: Exception) -> bool:
+    """Enhanced 4xx error detection for transport fallback decisions.
     
     Used to decide whether to fall back from Streamable HTTP to SSE transport
-    per MCP specification. Handles various error types and patterns that indicate
-    4xx-like conditions.
+    per MCP specification. Handles various error types and patterns that
+    indicate 4xx-like conditions.
     
     Args:
         error: The error to check
@@ -279,7 +289,7 @@ def is_4xx_error(error: Exception) -> bool:
     ])
 
 
-async def validate_auth_before_connection(
+async def _validate_auth_before_connection(
     url_str: str, 
     headers: dict[str, str] | None = None, 
     timeout: float = 30.0,
@@ -315,7 +325,9 @@ async def validate_auth_before_connection(
         OAuth authentication is skipped since it requires complex flows.
     """
     
-    # Skip auth validation for all httpx.Auth providers
+    # Skip auth validation for httpx.Auth providers (OAuth, etc.)
+    # These require complex authentication flows that cannot be pre-validated
+    # with a simple HTTP request
     if auth is not None:
         auth_class_name = auth.__class__.__name__
         logger.info(f'MCP server "{server_name}": Skipping auth validation for httpx.Auth provider: {auth_class_name}')
@@ -373,7 +385,7 @@ async def validate_auth_before_connection(
         return False, f"Unexpected error during auth validation: {e}"
 
 
-async def test_streamable_http_support(
+async def _test_streamable_http_support(
     url: str, 
     headers: dict[str, str] | None = None,
     timeout: float = 30.0,
@@ -457,13 +469,13 @@ async def test_streamable_http_support(
         raise
     except Exception as e:
         # Check if it's a 4xx-like error using improved detection
-        if is_4xx_error(e):
+        if _is_4xx_error(e):
             logger.debug(f"4xx-like error detected: {e}")
             return False
         raise
 
 
-def validate_mcp_server_config(
+def _validate_mcp_server_config(
     server_name: str,
     server_config: SingleMcpServerConfig,
     logger: logging.Logger
@@ -580,7 +592,7 @@ def validate_mcp_server_config(
                 )
 
 
-async def connect_to_mcp_server(
+async def _connect_to_mcp_server(
     server_name: str,
     server_config: SingleMcpServerConfig,
     exit_stack: AsyncExitStack,
@@ -629,7 +641,7 @@ async def connect_to_mcp_server(
                     f"initializing with: {server_config}")
 
         # Validate configuration first
-        validate_mcp_server_config(server_name, server_config, logger)
+        _validate_mcp_server_config(server_name, server_config, logger)
         
         # Determine if URL-based or command-based
         has_url = "url" in server_config and server_config["url"] is not None
@@ -655,7 +667,7 @@ async def connect_to_mcp_server(
                 if url_config.get("__pre_validate_authentication", True):
                     # Pre-validate authentication to avoid MCP async generator cleanup bugs
                     logger.info(f'MCP server "{server_name}": Pre-validating authentication')
-                    auth_valid, auth_message = await validate_auth_before_connection(
+                    auth_valid, auth_message = await _validate_auth_before_connection(
                         url_str,
                         headers=headers,
                         timeout=timeout or 30.0,
@@ -706,7 +718,7 @@ async def connect_to_mcp_server(
                         logger.info(f'MCP server "{server_name}": '
                                    f"testing Streamable HTTP support for {url_str}")
                         
-                        supports_streamable = await test_streamable_http_support(
+                        supports_streamable = await _test_streamable_http_support(
                             url_str, 
                             headers=headers,
                             timeout=timeout,
@@ -820,7 +832,7 @@ async def connect_to_mcp_server(
     return transport
 
 
-async def get_mcp_server_tools(
+async def _get_mcp_server_tools(
     server_name: str,
     transport: Transport,
     exit_stack: AsyncExitStack,
@@ -899,7 +911,7 @@ async def get_mcp_server_tools(
                 description: str = tool.description or ""
                 # Convert JSON schema to Pydantic model for argument validation
                 args_schema: type[BaseModel] = jsonschema_to_pydantic(
-                    fix_schema(tool.inputSchema)  # Apply schema conversion
+                    _fix_schema(tool.inputSchema)  # Apply schema conversion
                 )
                 session: ClientSession | None = None
 
@@ -936,19 +948,22 @@ async def get_mcp_server_tools(
                         if not hasattr(result, "content"):
                             return str(result)
 
-                        # The return type of `BaseTool`'s `arun` is `str`.
+                        # Convert MCP TextContent items to string format
+                        # The library uses LangChain's `response_format: 'content'` (the default),
+                        # which only supports text strings and BaseTool._arun() expects string return type
                         try:
                             result_content_text = "\n\n".join(
                                 item.text
                                 for item in result.content
                                 if isinstance(item, mcp_types.TextContent)
                             )
+                            # Alternative approach using JSON serialization (preserved for reference):
                             # text_items = [
                             #     item
                             #     for item in result.content
                             #     if isinstance(item, mcp_types.TextContent)
                             # ]
-                            # result_content_text =to_json(text_items).decode()
+                            # result_content_text = to_json(text_items).decode()
 
                         except KeyError as e:
                             result_content_text = (
@@ -994,7 +1009,7 @@ async def get_mcp_server_tools(
 
 
 # A very simple pre-configured logger for fallback
-def init_logger() -> logging.Logger:
+def _init_logger() -> logging.Logger:
     """Creates a simple pre-configured logger.
 
     Returns:
@@ -1115,7 +1130,7 @@ async def convert_mcp_to_langchain_tools(
         # Check if the root logger has handlers configured
         if not logging.root.handlers and not logger.handlers:
             # No logging configured, use a simple pre-configured logger
-            logger = init_logger()
+            logger = _init_logger()
 
     # Initialize AsyncExitStack for managing multiple server lifecycles
     transports: list[Transport] = []
@@ -1128,7 +1143,7 @@ async def convert_mcp_to_langchain_tools(
         # is spawned, i.e. after returning from the `await`, the spawned
         # subprocess starts its initialization independently of (so in
         # parallel with) the Python execution of the following lines.
-        transport = await connect_to_mcp_server(
+        transport = await _connect_to_mcp_server(
             server_name,
             server_config,
             async_exit_stack,
@@ -1143,7 +1158,7 @@ async def convert_mcp_to_langchain_tools(
         transports,
         strict=True
     ):
-        tools = await get_mcp_server_tools(
+        tools = await _get_mcp_server_tools(
             server_name,
             transport,
             async_exit_stack,

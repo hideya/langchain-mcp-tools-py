@@ -253,6 +253,8 @@ from mcp.client.auth import OAuthClientProvider
     mcp_servers = {
         "secure-streamable-server": {
             "url": "https://.../mcp/",
+            // To avoid auto protocol fallback, specify the protocol explicitly when using authentication
+            "transport": "streamable_http",  // or `"type": "http",`
             "auth": oauth_auth,
             "timeout": 30.0
         },
@@ -352,4 +354,4 @@ This will show:
 
 ### For Developers
 
-For deeper technical details about implementation challenges and solutions, see [TECHNICAL.md](TECHNICAL.md).
+See [TECHNICAL.md](TECHNICAL.md) for technical details about implementation challenges and solutions.
