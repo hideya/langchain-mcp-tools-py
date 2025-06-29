@@ -44,6 +44,35 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Placeholder for LangChain BaseTool.&quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
+
+<div class="viewcode-block" id="McpInitializationError">
+<a class="viewcode-back" href="../modules/langchain_mcp_tools.html#langchain_mcp_tools_docs.McpInitializationError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">McpInitializationError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when MCP server initialization fails.</span>
+<span class="sd">    </span>
+<span class="sd">    This exception is raised when there are issues during MCP server setup,</span>
+<span class="sd">    connection, or configuration validation. It includes the server name</span>
+<span class="sd">    for better error context and debugging.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        message: Description of the initialization error</span>
+<span class="sd">        server_name: Optional name of the MCP server that failed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="McpInitializationError.__init__">
+<a class="viewcode-back" href="../modules/langchain_mcp_tools.html#langchain_mcp_tools_docs.McpInitializationError.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">server_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_name</span> <span class="o">=</span> <span class="n">server_name</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">server_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;MCP server &quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">server_name</span><span class="si">}</span><span class="s1">&quot;: </span><span class="si">{</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span></div>
+
+
+
 <span class="c1"># Type definitions for public API</span>
 <div class="viewcode-block" id="McpServerCommandBasedConfig">
 <a class="viewcode-back" href="../modules/langchain_mcp_tools.html#langchain_mcp_tools_docs.McpServerCommandBasedConfig">[docs]</a>
@@ -88,31 +117,74 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a remote MCP server accessed via URL.</span>
 
 <span class="sd">    This configuration is used for remote MCP servers that are accessed via</span>
-<span class="sd">    HTTP/HTTPS (Server-Sent Events) or WebSocket connections. It defines the</span>
-<span class="sd">    URL to connect to and optional HTTP headers for authentication.</span>
+<span class="sd">    HTTP/HTTPS (Streamable HTTP, Server-Sent Events) or WebSocket connections.</span>
+<span class="sd">    It defines the URL to connect to and optional HTTP headers for authentication.</span>
+
+<span class="sd">    Note: Per MCP spec, clients should try Streamable HTTP first, then fallback </span>
+<span class="sd">    to SSE on 4xx errors for maximum compatibility.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        url: The URL of the remote MCP server. For SSE servers,</span>
-<span class="sd">            use http:// or https:// prefix. For WebSocket servers, </span>
+<span class="sd">        url: The URL of the remote MCP server. For HTTP/HTTPS servers,</span>
+<span class="sd">            use http:// or https:// prefix. For WebSocket servers,</span>
 <span class="sd">            use ws:// or wss:// prefix.</span>
+<span class="sd">        transport: Optional transport type. Supported values:</span>
+<span class="sd">            &quot;streamable_http&quot; or &quot;http&quot; (recommended, attempted first), </span>
+<span class="sd">            &quot;sse&quot; (deprecated, fallback), &quot;websocket&quot;</span>
+<span class="sd">        type: Optional alternative field name for transport (for compatibility)</span>
 <span class="sd">        headers: Optional dictionary of HTTP headers to include in the request,</span>
 <span class="sd">            typically used for authentication (e.g., bearer tokens).</span>
+<span class="sd">        timeout: Optional timeout for HTTP requests (default: 30.0 seconds).</span>
+<span class="sd">        sse_read_timeout: Optional timeout for SSE connections (SSE only).</span>
+<span class="sd">        terminate_on_close: Optional flag to terminate on connection close.</span>
+<span class="sd">        httpx_client_factory: Optional factory for creating HTTP clients.</span>
+<span class="sd">        auth: Optional httpx authentication for requests.</span>
+<span class="sd">        __pre_validate_authentication: Optional flag to skip auth validation</span>
+<span class="sd">            (default: True). Set to False for OAuth flows that require</span>
+<span class="sd">            complex authentication flows.</span>
 
-<span class="sd">    Example for SSE server::</span>
+<span class="sd">    Example for auto-detection (recommended)::</span>
+
+<span class="sd">        {</span>
+<span class="sd">            &quot;url&quot;: &quot;https://api.example.com/mcp&quot;,</span>
+<span class="sd">            # Auto-tries Streamable HTTP first, falls back to SSE on 4xx</span>
+<span class="sd">            &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token123&quot;},</span>
+<span class="sd">            &quot;timeout&quot;: 60.0</span>
+<span class="sd">        }</span>
+
+<span class="sd">    Example for explicit Streamable HTTP::</span>
+
+<span class="sd">        {</span>
+<span class="sd">            &quot;url&quot;: &quot;https://api.example.com/mcp&quot;,</span>
+<span class="sd">            &quot;transport&quot;: &quot;streamable_http&quot;,</span>
+<span class="sd">            &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token123&quot;},</span>
+<span class="sd">            &quot;timeout&quot;: 60.0</span>
+<span class="sd">        }</span>
+
+<span class="sd">    Example for explicit SSE (legacy)::</span>
 
 <span class="sd">        {</span>
 <span class="sd">            &quot;url&quot;: &quot;https://example.com/mcp/sse&quot;,</span>
+<span class="sd">            &quot;transport&quot;: &quot;sse&quot;,</span>
 <span class="sd">            &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token123&quot;}</span>
 <span class="sd">        }</span>
 
-<span class="sd">    Example for WebSocket server::</span>
+<span class="sd">    Example for WebSocket::</span>
 
 <span class="sd">        {</span>
-<span class="sd">            &quot;url&quot;: &quot;wss://example.com/mcp/ws&quot;</span>
+<span class="sd">            &quot;url&quot;: &quot;wss://example.com/mcp/ws&quot;,</span>
+<span class="sd">            &quot;transport&quot;: &quot;websocket&quot;</span>
 <span class="sd">        }</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">url</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">headers</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span></div>
+    <span class="n">transport</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Preferred field name</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Alternative field name for compatibility</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">timeout</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">sse_read_timeout</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">terminate_on_close</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
+    <span class="n">httpx_client_factory</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>  <span class="c1"># McpHttpClientFactory</span>
+    <span class="n">auth</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>  <span class="c1"># httpx.Auth</span>
+    <span class="n">__prevalidate_authentication</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span></div>
 
 
 
@@ -148,8 +220,15 @@
 <span class="sd">            &quot;command&quot;: &quot;uvx&quot;,</span>
 <span class="sd">            &quot;args&quot;: [&quot;mcp-server-fetch&quot;]</span>
 <span class="sd">        },</span>
-<span class="sd">        &quot;remote-server&quot;: {</span>
-<span class="sd">            &quot;url&quot;: &quot;https://example.com/mcp/sse&quot;,</span>
+<span class="sd">        &quot;auto-detection-server&quot;: {</span>
+<span class="sd">            &quot;url&quot;: &quot;https://api.example.com/mcp&quot;,</span>
+<span class="sd">            # Will try Streamable HTTP first, fallback to SSE on 4xx</span>
+<span class="sd">            &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token123&quot;},</span>
+<span class="sd">            &quot;timeout&quot;: 60.0</span>
+<span class="sd">        },</span>
+<span class="sd">        &quot;explicit-sse-server&quot;: {</span>
+<span class="sd">            &quot;url&quot;: &quot;https://legacy.example.com/mcp/sse&quot;,</span>
+<span class="sd">            &quot;transport&quot;: &quot;sse&quot;,</span>
 <span class="sd">            &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token123&quot;}</span>
 <span class="sd">        }</span>
 <span class="sd">    }</span>
@@ -160,15 +239,22 @@
 <span class="n">McpServerCleanupFn</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">Awaitable</span><span class="p">[</span><span class="kc">None</span><span class="p">]]</span>
 <span class="sd">&quot;&quot;&quot;Type for the async cleanup function returned by convert_mcp_to_langchain_tools.</span>
 
-<span class="sd">This represents an asynchronous function that takes no arguments and returns</span>
-<span class="sd">nothing. It&#39;s used to properly shut down all MCP server connections and clean</span>
-<span class="sd">up resources when the tools are no longer needed.</span>
+<span class="sd">This function encapsulates the cleanup of all MCP server connections managed by</span>
+<span class="sd">the AsyncExitStack. When called, it properly closes all transport connections,</span>
+<span class="sd">sessions, and resources in the correct order.</span>
+
+<span class="sd">Important: Always call this function when you&#39;re done using the tools to prevent</span>
+<span class="sd">resource leaks and ensure graceful shutdown of MCP server connections.</span>
 
 <span class="sd">Example usage::</span>
 
 <span class="sd">    tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)</span>
-<span class="sd">    # Use tools...</span>
-<span class="sd">    await cleanup()  # Clean up resources when done</span>
+<span class="sd">    try:</span>
+<span class="sd">        # Use tools with your LangChain application...</span>
+<span class="sd">        result = await tools[0].arun(param=&quot;value&quot;)</span>
+<span class="sd">    finally:</span>
+<span class="sd">        # Always cleanup, even if exceptions occur</span>
+<span class="sd">        await cleanup()</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 
@@ -178,43 +264,75 @@
     <span class="n">server_configs</span><span class="p">:</span> <span class="n">McpServersConfig</span><span class="p">,</span>
     <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">BaseTool</span><span class="p">],</span> <span class="n">McpServerCleanupFn</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize multiple MCP servers and convert their tools to</span>
-<span class="sd">    LangChain format.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize multiple MCP servers and convert their tools to LangChain format.</span>
 
-<span class="sd">    This async function manages parallel initialization of multiple MCP</span>
-<span class="sd">    servers, converts their tools to LangChain format, and provides a cleanup</span>
-<span class="sd">    mechanism. It orchestrates the full lifecycle of multiple servers.</span>
+<span class="sd">    This is the main entry point for the library. It orchestrates the complete</span>
+<span class="sd">    lifecycle of multiple MCP server connections, from initialization through</span>
+<span class="sd">    tool conversion to cleanup. Provides robust error handling and authentication</span>
+<span class="sd">    pre-validation to prevent common MCP client library issues.</span>
+
+<span class="sd">    Key Features:</span>
+<span class="sd">    - Parallel initialization of multiple servers for efficiency</span>
+<span class="sd">    - Authentication pre-validation for HTTP servers to prevent async generator bugs</span>
+<span class="sd">    - Automatic transport selection and fallback per MCP specification</span>
+<span class="sd">    - Comprehensive error handling with McpInitializationError</span>
+<span class="sd">    - User-controlled cleanup via returned async function</span>
+<span class="sd">    - Support for both local (stdio) and remote (HTTP/WebSocket) servers</span>
+
+<span class="sd">    Transport Support:</span>
+<span class="sd">    - stdio: Local command-based servers (npx, uvx, python, etc.)</span>
+<span class="sd">    - streamable_http: Modern HTTP servers (recommended, tried first)</span>
+<span class="sd">    - sse: Legacy Server-Sent Events HTTP servers (fallback)</span>
+<span class="sd">    - websocket: WebSocket servers for real-time communication</span>
+
+<span class="sd">    Error Handling:</span>
+<span class="sd">    All configuration and connection errors are wrapped in McpInitializationError</span>
+<span class="sd">    with server context for easy debugging. Authentication failures are detected</span>
+<span class="sd">    early to prevent async generator cleanup issues in the MCP client library.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        server_configs: Dictionary mapping server names to their</span>
-<span class="sd">            configurations, where each configuration contains command, args,</span>
-<span class="sd">            and env settings</span>
-<span class="sd">        logger: Logger instance to use for logging events and errors.</span>
-<span class="sd">            If None, uses module logger with fallback to a pre-configured</span>
-<span class="sd">            logger when no root handlers exist.</span>
+<span class="sd">        server_configs: Dictionary mapping server names to configurations.</span>
+<span class="sd">            Each config can be either McpServerCommandBasedConfig for local</span>
+<span class="sd">            servers or McpServerUrlBasedConfig for remote servers.</span>
+<span class="sd">        logger: Optional logger instance. If None, creates a pre-configured</span>
+<span class="sd">            logger with appropriate levels for MCP debugging.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        A tuple containing:</span>
 
-<span class="sd">        * List of converted LangChain tools from all servers</span>
-<span class="sd">        * Async cleanup function to properly shutdown all server connections</span>
+<span class="sd">        - List[BaseTool]: All tools from all servers, ready for LangChain use</span>
+<span class="sd">        - McpServerCleanupFn: Async function to properly shutdown all connections</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        McpInitializationError: If any server fails to initialize with detailed context</span>
 
 <span class="sd">    Example::</span>
 
 <span class="sd">        server_configs = {</span>
-<span class="sd">            &quot;fetch&quot;: {</span>
-<span class="sd">                &quot;command&quot;: &quot;uvx&quot;, &quot;args&quot;: [&quot;mcp-server-fetch&quot;]</span>
+<span class="sd">            &quot;local-filesystem&quot;: {</span>
+<span class="sd">                &quot;command&quot;: &quot;npx&quot;,</span>
+<span class="sd">                &quot;args&quot;: [&quot;-y&quot;, &quot;@modelcontextprotocol/server-filesystem&quot;, &quot;.&quot;]</span>
 <span class="sd">            },</span>
-<span class="sd">            &quot;weather&quot;: {</span>
-<span class="sd">                &quot;command&quot;: &quot;npx&quot;, &quot;args&quot;: [&quot;-y&quot;,&quot;@h1deya/mcp-server-weather&quot;]</span>
+<span class="sd">            &quot;remote-api&quot;: {</span>
+<span class="sd">                &quot;url&quot;: &quot;https://api.example.com/mcp&quot;,</span>
+<span class="sd">                &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer your-token&quot;},</span>
+<span class="sd">                &quot;timeout&quot;: 30.0</span>
 <span class="sd">            }</span>
 <span class="sd">        }</span>
-<span class="sd">        </span>
-<span class="sd">        tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)</span>
-<span class="sd">        </span>
-<span class="sd">        # Use tools...</span>
-<span class="sd">        </span>
-<span class="sd">        await cleanup()</span>
+
+<span class="sd">        try:</span>
+<span class="sd">            tools, cleanup = await convert_mcp_to_langchain_tools(server_configs)</span>
+<span class="sd">            </span>
+<span class="sd">            # Use tools with your LangChain application</span>
+<span class="sd">            for tool in tools:</span>
+<span class="sd">                result = await tool.arun(**tool_args)</span>
+<span class="sd">                </span>
+<span class="sd">        except McpInitializationError as e:</span>
+<span class="sd">            print(f&quot;Failed to initialize MCP server &#39;{e.server_name}&#39;: {e}&quot;)</span>
+<span class="sd">            </span>
+<span class="sd">        finally:</span>
+<span class="sd">            # Always cleanup when done</span>
+<span class="sd">            await cleanup()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># This is just a documentation stub</span>
     <span class="k">pass</span></div>
