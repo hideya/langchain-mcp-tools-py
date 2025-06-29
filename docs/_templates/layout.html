@@ -1,0 +1,12 @@
+{% extends "!layout.html" %}
+
+{% block document %}
+  <!-- Fixed position version badge -->
+  <div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+    <span style="background: #2980B9; color: white; padding: 8px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+      Version {{ release }}
+    </span>
+  </div>
+  
+  {{ super() }}
+{% endblock %}
