@@ -3,14 +3,16 @@
 langchain-mcp-tools-py
 ======================
 
-A Python library to connect LangChain tools with MCP (Machine Chat Protocol) servers.
+A Python library to connect LangChain tools with MCP (Model Context Protocol) servers.
 
 Main Features
 -------------
 
 * Convert MCP servers to LangChain tools
-* Support for command-based and URL-based MCP servers
+* Support for command-based and URL-based MCP servers  
 * Clean management of server lifecycles
+* Robust error handling and authentication pre-validation
+* Support for multiple transport types (stdio, HTTP, WebSocket)
 
 .. toctree::
    :maxdepth: 2

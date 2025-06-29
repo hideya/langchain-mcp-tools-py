@@ -11,7 +11,7 @@ body {
 
 
 div.document {
-    width: 940px;
+    width: 1024px;
     margin: 30px auto 0 auto;
 }
 
@@ -21,11 +21,11 @@ div.documentwrapper {
 }
 
 div.bodywrapper {
-    margin: 0 0 0 220px;
+    margin: 0 0 0 230px;
 }
 
 div.sphinxsidebar {
-    width: 220px;
+    width: 230px;
     font-size: 14px;
     line-height: 1.5;
 }
@@ -45,7 +45,7 @@ div.body > .section {
 }
 
 div.footer {
-    width: 940px;
+    width: 1024px;
     margin: 20px auto 30px auto;
     font-size: 14px;
     color: #888;
@@ -502,8 +502,12 @@ a.footnote-reference:hover {
 a:hover tt, a:hover code {
     background: #EEE;
 }
+div.sphinxsidebar {
+    position: fixed;
+    margin-left: 0;
+}
 
-@media screen and (max-width: 940px) {
+@media screen and (max-width: 1024px) {
 
     body {
         margin: 0;
@@ -523,7 +527,8 @@ a:hover tt, a:hover code {
         display: block;
         float: none;
         width: unset;
-        margin: 50px -30px -20px -30px;
+        margin: -20px -30px 20px -30px;
+        position: static;
         padding: 10px 20px;
         background: #333;
         color: #FFF;
