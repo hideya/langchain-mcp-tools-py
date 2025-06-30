@@ -98,8 +98,8 @@ async def run() -> None:
             #     # optionally `"transport": "ws"` or `"type": "ws"`
             # },
             
-            # Example of authentication via Authorization header
-            # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
+            # # Example of authentication via Authorization header
+            # # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
             # "github": {
             #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
             #     "type": "http",
