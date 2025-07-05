@@ -40,11 +40,11 @@ async def run() -> None:
     # one of the following code snippets and one of the appropriate "weather"
     # server configurations, while commenting out the others.
 
-    sse_server_process, sse_server_port = start_remote_mcp_server_locally(
-        "SSE", "npx -y @h1deya/mcp-server-weather")
+    # sse_server_process, sse_server_port = start_remote_mcp_server_locally(
+    #     "SSE", "npx -y @h1deya/mcp-server-weather")
 
-    ws_server_process, ws_server_port = start_remote_mcp_server_locally(
-        "WS", "npx -y @h1deya/mcp-server-weather")
+    # ws_server_process, ws_server_port = start_remote_mcp_server_locally(
+    #     "WS", "npx -y @h1deya/mcp-server-weather")
 
     try:
         mcp_servers: McpServersConfig = {
@@ -57,7 +57,7 @@ async def run() -> None:
                     "@modelcontextprotocol/server-filesystem",
                     "."  # path to a directory to allow access to
                 ],
-                "cwd": "/tmp"  # the working dir to be use by the server
+                # "cwd": "/tmp"  # the working dir to be use by the server
             },
 
             "fetch": {
@@ -67,35 +67,42 @@ async def run() -> None:
                 ]
             },
 
-            # "weather": {
-            #     "command": "npx",
-            #     "args": [
-            #         "-y",
-            #         "@h1deya/mcp-server-weather"
-            #     ]
-            # },
-
-            # Auto-detection example: This will try Streamable HTTP first, then fallback to SSE
-            "weather": {
-                "url": f"http://localhost:{sse_server_port}/sse"
+            "us-weather": {  # US weather only
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@h1deya/mcp-server-weather"
+                ]
             },
+
+            # # Auto-detection example: This will try Streamable HTTP first, then fallback to SSE
+            # "us-weather": {
+            #     "url": f"http://localhost:{sse_server_port}/sse"
+            # },
             
             # # THIS DOESN'T WORK: Example of explicit transport selection:
-            # "weather": {
+            # "us-weather": {
             #     "url": f"http://localhost:{streamable_http_server_port}/mcp",
             #     "transport": "streamable_http"  # Force Streamable HTTP
             #     # "type": "http"  # VSCode-style config also works instead of the above
             # },
             
-            # "weather": {
+            # "us-weather": {
             #     "url": f"http://localhost:{sse_server_port}/sse",
             #     "transport": "sse"  # Force SSE
             #     # "type": "sse"  # This also works instead of the above
             # },
 
-            # "weather": {
+            # "us-weather": {
             #     "url": f"ws://localhost:{ws_server_port}/message"
             #     # optionally `"transport": "ws"` or `"type": "ws"`
+            # },
+            
+            # # https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search
+            # "brave-search": {
+            #     "command": "npx",
+            #     "args": [ "-y", "@modelcontextprotocol/server-brave-search"],
+            #     "env": { "BRAVE_API_KEY": os.environ.get('BRAVE_API_KEY', '') }
             # },
             
             # # Example of authentication via Authorization header
@@ -106,8 +113,55 @@ async def run() -> None:
             #     # "__pre_validate_authentication": False,
             #     "url": "https://api.githubcopilot.com/mcp/",
             #     "headers": {
-            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
             #     }
+            # },
+            
+            # "notion": {
+            #     "command": "npx",
+            #     "args": ["-y", "@notionhq/notion-mcp-server"],
+            #     "env": {
+            #         # Although the following implies that this MCP server is designed for
+            #         # OpenAI LLMs, it works fine with others models.
+            #         # Tested Claude and Gemini (with schema adjustments).
+            #         "OPENAPI_MCP_HEADERS": (
+            #             '{"Authorization": "Bearer '
+            #             f'{os.environ.get("NOTION_INTEGRATION_SECRET")}", '
+            #             '"Notion-Version": "2022-06-28"}')
+            #     },
+            # },
+            
+            # "notion": {
+            #     "command": "npx",
+            #     "args": ["-y", "@suekou/mcp-notion-server"],
+            #     "env": {
+            #         "NOTION_API_TOKEN": os.environ.get("NOTION_INTEGRATION_SECRET")
+            #     }
+            # },
+            
+            # "sqlite": {
+            #     "command": "uvx",
+            #     "args": [
+            #         "mcp-server-sqlite",
+            #         "--db-path",
+            #         "mcp-server-sqlite-test.sqlite3"
+            #     ],
+            #     "cwd": "/tmp"  # the working directory to be use by the server
+            # },
+
+            # "sequential-thinking": {
+            #     "command": "npx",
+            #     "args": [
+            #         "-y",
+            #         "@modelcontextprotocol/server-sequential-thinking"
+            #     ]
+            # },
+
+            # "playwright": {
+            #     "command": "npx",
+            #     "args": [
+            #         "@playwright/mcp@latest"
+            #     ]
             # },
         }
 
@@ -128,6 +182,7 @@ async def run() -> None:
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
             mcp_servers,
+            # logging.DEBUG
             # init_logger()
         )
 
@@ -138,13 +193,13 @@ async def run() -> None:
         
         ### https://platform.openai.com/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        # llm = init_chat_model("openai:gpt-4o-mini")
+        # llm = init_chat_model("openai:gpt-4.1-nano")
         # llm = init_chat_model("openai:o4-mini")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
-        llm = init_chat_model("google_genai:gemini-2.0-flash")
-        # llm = init_chat_model("google_genai:gemini-1.5-pro")
+        llm = init_chat_model("google_genai:gemini-2.5-flash")
+        # llm = init_chat_model("google_genai:gemini-2.5-pro")
 
         agent = create_react_agent(
             llm,
@@ -155,12 +210,17 @@ async def run() -> None:
         print("\nLLM model:", getattr(llm, 'model', getattr(llm, 'model_name', 'unknown')))
         print("\x1b[0m");  # reset the color
 
+        query = "Are there any weather alerts in California?"
         # query = "Tell me how LLMs work in a few sentences"
         # query = "Read the news headlines on bbc.com"
         # query = "Read and briefly summarize the LICENSE file"
         # query = "Tell me the number of directories in the current directory"
-        query = "Are there any weather alerts in California?"
-
+        # query = ("Make a new table in DB and put items apple and orange with counts 123 and 345 respectively, "
+        #         "then increment the coutns by 1, and show all the items in the table.")
+        # query = "Open bbc.com page"
+        # query = "Tell me about my Notion account"
+        # query = "What's the news from Tokyo today?"
+        
         print("\x1b[33m")  # color to yellow
         print(query)
         print("\x1b[0m")   # reset the color
