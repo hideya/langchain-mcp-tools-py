@@ -19,23 +19,17 @@ server tools with LangChain / Python.
 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is the de facto industry standard
 that dramatically expands the scope of LLMs by enabling the integration of external tools and resources,
-including DBs, GitHub, Google Drive, Docker, Slack, Notion, Spotify, and more.
+including DBs, Cloud Storages, GitHub, Docker, Slack, and more.
+There are quite a few useful MCP servers already available.
+See [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers).
 
-There are quite a few useful MCP servers already available:
-
-- [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers)
-- [MCP.so - Find Awesome MCP Servers and Clients](https://mcp.so/)
-- [Smithery: MCP Server Registry](https://smithery.ai/)
-
-This utility's goal is to make these numerous MCP servers easily accessible from LangChain.
-
+This utility's goal is to make these numerous MCP servers easily accessible from LangChain.  
 It contains a utility function `convert_mcp_to_langchain_tools()`.  
 This async function handles parallel initialization of specified multiple MCP servers
 and converts their available tools into a list of LangChain-compatible tools.
 
 For detailed information on how to use this library, please refer to the following document:
-- ["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a)
-
+["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a).  
 A TypeScript equivalent of this utility is available
 [here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
 
@@ -279,6 +273,20 @@ Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/C
 
 ## Appendix
 
+### Troubleshooting
+
+1. **Enable debug logging**: Set the log level to DEBUG to see detailed connection and execution logs:  
+
+    ```
+    tools, cleanup = await convert_mcp_to_langchain_tools(
+        mcp_servers,
+        logging.DEBUG
+    )
+    ```
+2. **Check server errlog**: For stdio MCP servers, use `errlog` redirection to capture server error output
+3. **Test explicit transports**: Try forcing specific transport types to isolate auto-detection issues
+4. **Verify server independently**: Refer to [Debugging Section in MCP documentation](https://modelcontextprotocol.io/docs/tools/debugging)
+
 ### Troubleshooting Authentication Issues
 
 When authentication errors occur, they often generate massive logs that make it difficult to identify that authentication is the root cause.
@@ -304,47 +312,14 @@ Set `"__pre_validate_authentication": False` in your server config if:
 }
 ```
 
-#### Debugging Authentication
+### Debugging Authentication
 1. **Check your tokens/credentials** - Most auth failures are due to expired or incorrect tokens
 2. **Verify token permissions** - Some MCP servers require specific scopes (e.g., GitHub Copilot license)
 3. **Test with curl** - Try a simple HTTP request to verify your auth setup:
+
    ```bash
    curl -H "Authorization: Bearer your-token" https://api.example.com/mcp/
    ```
-
-### Transport Selection Issues
-
-The library automatically selects the appropriate transport based on your configuration:
-
-1. **Explicit transport field** takes priority
-2. **URL protocol detection** (http/https → Streamable HTTP → SSE fallback, ws/wss → WebSocket)
-3. **Command presence** → stdio transport
-
-#### Common Issues
-- **Both url and command specified**: Choose one approach per server
-- **Transport/URL mismatch**: e.g., `"transport": "websocket"` with `"url": "https://..."`
-- **Missing required fields**: Must have either `url` or `command`
-
-#### Auto-detection vs Explicit
-For HTTP servers, the library tries Streamable HTTP first, then falls back to SSE on 4xx errors (per MCP specification). Use explicit `"transport"` if you want to skip auto-detection.
-
-### Debug Mode
-
-For detailed debugging, enable debug logging:
-
-```python
-import logging
-logging.getLogger("langchain_mcp_tools").setLevel(logging.DEBUG)
-
-# Also useful for transport debugging:
-logging.getLogger("mcp").setLevel(logging.DEBUG)
-```
-
-This will show:
-- Transport selection decisions
-- Authentication validation attempts
-- Tool discovery and conversion steps
-- Connection establishment details
 
 ### For Developers
 

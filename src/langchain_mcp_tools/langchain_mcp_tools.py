@@ -14,11 +14,9 @@ import os
 import sys
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import (
-    Any,
     Awaitable,
     Callable,
     cast,
-    NoReturn,
     NotRequired,
     TextIO,
     TypeAlias,
@@ -34,8 +32,7 @@ try:
         MemoryObjectSendStream,
     )
     import httpx
-    from jsonschema_pydantic import jsonschema_to_pydantic  # type: ignore
-    from langchain_core.tools import BaseTool, ToolException
+    from langchain_core.tools import BaseTool
     from mcp import ClientSession
     from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client, StdioServerParameters
@@ -43,12 +40,21 @@ try:
     from mcp.client.websocket import websocket_client
     from mcp.shared._httpx_utils import McpHttpClientFactory
     import mcp.types as mcp_types
-    from pydantic import BaseModel
     # from pydantic_core import to_json
 except ImportError as e:
     print(f"\nError: Required package not found: {e}")
     print("Please ensure all required packages are installed\n")
     sys.exit(1)
+
+# Local imports
+from .tool_adapter import create_mcp_langchain_adapter
+from .transport_utils import (
+    Transport,
+    McpInitializationError,
+    _validate_auth_before_connection,
+    _test_streamable_http_support,
+    _validate_mcp_server_config,
+)
 
 
 class McpInitializationError(Exception):
@@ -214,24 +220,6 @@ Example:
 """
 
 
-def _fix_schema(schema: dict) -> dict:
-    """Converts JSON Schema "type": ["string", "null"] to "anyOf" format.
-
-    Args:
-        schema: A JSON schema dictionary
-
-    Returns:
-        Modified schema with converted type formats
-    """
-    if isinstance(schema, dict):
-        if "type" in schema and isinstance(schema["type"], list):
-            schema["anyOf"] = [{"type": t} for t in schema["type"]]
-            del schema["type"]  # Remove "type" and standardize to "anyOf"
-        for key, value in schema.items():
-            schema[key] = _fix_schema(value)  # Apply recursively
-    return schema
-
-
 # Type alias for bidirectional communication channels with MCP servers
 # Note: This type is not officially exported by mcp.types but represents
 # the standard transport interface used by all MCP client implementations
@@ -239,357 +227,6 @@ Transport: TypeAlias = tuple[
     MemoryObjectReceiveStream[mcp_types.JSONRPCMessage | Exception],
     MemoryObjectSendStream[mcp_types.JSONRPCMessage]
 ]
-
-
-def _is_4xx_error(error: Exception) -> bool:
-    """Enhanced 4xx error detection for transport fallback decisions.
-    
-    Used to decide whether to fall back from Streamable HTTP to SSE transport
-    per MCP specification. Handles various error types and patterns that
-    indicate 4xx-like conditions.
-    
-    Args:
-        error: The error to check
-        
-    Returns:
-        True if the error represents a 4xx HTTP status or equivalent
-    """
-    if not error:
-        return False
-    
-    # Handle ExceptionGroup (Python 3.11+) by checking sub-exceptions
-    if hasattr(error, 'exceptions'):
-        return any(is_4xx_error(sub_error) for sub_error in error.exceptions)
-    
-    # Check for explicit HTTP status codes
-    if hasattr(error, 'status') and isinstance(error.status, int):
-        return 400 <= error.status < 500
-    
-    # Check for httpx response errors
-    if hasattr(error, 'response') and hasattr(error.response, 'status_code'):
-        return 400 <= error.response.status_code < 500
-    
-    # Check error message for 4xx patterns
-    error_str = str(error).lower()
-    
-    # Look for specific 4xx status codes (enhanced pattern matching)
-    if any(code in error_str for code in ['400', '401', '402', '403', '404', '405', '406', '407', '408', '409']):
-        return True
-    
-    # Look for 4xx error names (expanded list matching TypeScript version)
-    return any(pattern in error_str for pattern in [
-        'bad request',
-        'unauthorized',
-        'forbidden', 
-        'not found',
-        'method not allowed',
-        'not acceptable',
-        'request timeout',
-        'conflict'
-    ])
-
-
-async def _validate_auth_before_connection(
-    url_str: str, 
-    headers: dict[str, str] | None = None, 
-    timeout: float = 30.0,
-    auth: httpx.Auth | None = None,
-    logger: logging.Logger = logging.getLogger(__name__),
-    server_name: str = "Unknown"
-) -> tuple[bool, str]:
-    """Pre-validate authentication with a simple HTTP request before creating MCP connection.
-    
-    This function helps avoid async generator cleanup bugs in the MCP client library
-    by detecting authentication failures early, before the problematic MCP transport
-    creation process begins.
-    
-    For OAuth authentication, this function skips validation since OAuth requires
-    a complex flow that cannot be pre-validated with a simple HTTP request.
-    Use __pre_validate_authentication=False to skip this validation.
-    
-    Args:
-        url_str: The MCP server URL to test
-        headers: Optional HTTP headers (typically containing Authorization)
-        timeout: Request timeout in seconds
-        auth: Optional httpx authentication object (OAuth providers are skipped)
-        logger: Logger for debugging
-        server_name: MCP server name to be validated
-        
-    Returns:
-        Tuple of (success: bool, message: str) where:
-        - success=True means authentication is valid or OAuth (skipped)
-        - success=False means authentication failed with descriptive message
-        
-    Note:
-        This function only validates simple authentication (401, 402, 403 errors).
-        OAuth authentication is skipped since it requires complex flows.
-    """
-    
-    # Skip auth validation for httpx.Auth providers (OAuth, etc.)
-    # These require complex authentication flows that cannot be pre-validated
-    # with a simple HTTP request
-    if auth is not None:
-        auth_class_name = auth.__class__.__name__
-        logger.info(f'MCP server "{server_name}": Skipping auth validation for httpx.Auth provider: {auth_class_name}')
-        return True, "httpx.Auth authentication skipped (requires full flow)"
-    
-    # Create InitializeRequest as per MCP specification (similar to test_streamable_http_support)
-    init_request = {
-        "jsonrpc": "2.0",
-        "id": f"auth-test-{int(time.time() * 1000)}",
-        "method": "initialize", 
-        "params": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {
-                "name": "mcp-auth-test",
-                "version": "1.0.0"
-            }
-        }
-    }
-    
-    # Required headers per MCP specification
-    request_headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
-    }
-    if headers:
-        request_headers.update(headers)
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            logger.debug(f"Pre-validating authentication for: {url_str}")
-            response = await client.post(
-                url_str,
-                json=init_request,
-                headers=request_headers,
-                timeout=timeout,
-                auth=auth
-            )
-            
-            if response.status_code == 401:
-                return False, f"Authentication failed (401 Unauthorized): {response.text if hasattr(response, 'text') else 'Unknown error'}"
-            elif response.status_code == 402:
-                return False, f"Authentication failed (402 Payment Required): {response.text if hasattr(response, 'text') else 'Unknown error'}"
-            elif response.status_code == 403:
-                return False, f"Authentication failed (403 Forbidden): {response.text if hasattr(response, 'text') else 'Unknown error'}"
-
-            logger.info(f'MCP server "{server_name}": Authentication validation passed: {response.status_code}')
-            return True, "Authentication validation passed"
-            
-    except httpx.HTTPStatusError as e:
-        return False, f"HTTP Error ({e.response.status_code}): {e}"
-    except (httpx.ConnectError, httpx.TimeoutException) as e:
-        return False, f"Connection failed: {e}"
-    except Exception as e:
-        return False, f"Unexpected error during auth validation: {e}"
-
-
-async def _test_streamable_http_support(
-    url: str, 
-    headers: dict[str, str] | None = None,
-    timeout: float = 30.0,
-    auth: httpx.Auth | None = None,
-    logger: logging.Logger = logging.getLogger(__name__)
-) -> bool:
-    """Test if URL supports Streamable HTTP per official MCP specification.
-    
-    Follows the MCP specification's recommended approach for backwards compatibility.
-    Uses proper InitializeRequest with official protocol version and required headers.
-    
-    See: https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#backwards-compatibility
-    
-    Args:
-        url: The MCP server URL to test
-        headers: Optional HTTP headers
-        timeout: Request timeout
-        auth: Optional httpx authentication
-        logger: Logger for debugging
-        
-    Returns:
-        True if Streamable HTTP is supported, False if should fallback to SSE
-        
-    Raises:
-        Exception: For non-4xx errors that should be re-raised
-    """
-    # Create InitializeRequest as per MCP specification
-    init_request = {
-        "jsonrpc": "2.0",
-        "id": f"transport-test-{int(time.time() * 1000)}",  # Use milliseconds like TS version
-        "method": "initialize", 
-        "params": {
-            "protocolVersion": "2024-11-05",  # Official MCP Protocol version
-            "capabilities": {},
-            "clientInfo": {
-                "name": "mcp-transport-test",
-                "version": "1.0.0"
-            }
-        }
-    }
-    
-    # Required headers per MCP specification
-    request_headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'  # Required by spec
-    }
-    if headers:
-        request_headers.update(headers)
-    
-    try:
-        async with httpx.AsyncClient(follow_redirects=True) as client:
-            logger.debug(f"Testing Streamable HTTP: POST InitializeRequest to {url}")
-            response = await client.post(
-                url,
-                json=init_request,
-                headers=request_headers,
-                timeout=timeout,
-                auth=auth
-            )
-            
-            logger.debug(f"Transport test response: {response.status_code} {response.headers.get('content-type', 'N/A')}")
-            
-            if response.status_code == 200:
-                # Success indicates Streamable HTTP support
-                logger.debug("Streamable HTTP test successful")
-                return True
-            elif 400 <= response.status_code < 500:
-                # 4xx error indicates fallback to SSE per MCP spec
-                logger.debug(f"Received {response.status_code}, should fallback to SSE")
-                return False
-            else:
-                # Other errors should be re-raised
-                response.raise_for_status()
-                return True  # If we get here, it succeeded
-                
-    except httpx.TimeoutException:
-        logger.debug("Request timeout - treating as connection error")
-        raise
-    except httpx.ConnectError:
-        logger.debug("Connection error")
-        raise
-    except Exception as e:
-        # Check if it's a 4xx-like error using improved detection
-        if _is_4xx_error(e):
-            logger.debug(f"4xx-like error detected: {e}")
-            return False
-        raise
-
-
-def _validate_mcp_server_config(
-    server_name: str,
-    server_config: SingleMcpServerConfig,
-    logger: logging.Logger
-) -> None:
-    """Validates MCP server configuration following TypeScript transport selection logic.
-    
-    Transport Selection Priority:
-    1. Explicit transport/type field (must match URL protocol if URL provided)
-    2. URL protocol auto-detection (http/https → StreamableHTTP, ws/wss → WebSocket)
-    3. Command presence → Stdio transport
-    4. Error if none of the above match
-    
-    Conflicts that cause errors:
-    - Both url and command specified
-    - transport/type doesn't match URL protocol
-    - transport requires URL but no URL provided
-    - transport requires command but no command provided
-    
-    Args:
-        server_name: Server instance name for error messages
-        server_config: Configuration to validate
-        logger: Logger for warnings
-        
-    Raises:
-        McpInitializationError: If configuration is invalid
-    """
-    has_url = "url" in server_config and server_config["url"] is not None
-    has_command = "command" in server_config and server_config["command"] is not None
-    
-    # Get transport type (prefer 'transport' over 'type' for compatibility)
-    transport_type = server_config.get("transport") or server_config.get("type")
-    
-    # Conflict check: Both url and command specified
-    if has_url and has_command:
-        raise McpInitializationError(
-            f'Cannot specify both "url" ({server_config["url"]}) '
-            f'and "command" ({server_config["command"]}). Use "url" for remote servers '
-            f'or "command" for local servers.',
-            server_name=server_name
-        )
-    
-    # Must have either URL or command
-    if not has_url and not has_command:
-        raise McpInitializationError(
-            'Either "url" or "command" must be specified',
-            server_name=server_name
-        )
-    
-    if has_url:
-        url_str = str(server_config["url"])
-        try:
-            parsed_url = urlparse(url_str)
-            url_scheme = parsed_url.scheme.lower()
-        except Exception:
-            raise McpInitializationError(
-                f'Invalid URL format: {url_str}',
-                server_name=server_name
-            )
-        
-        if transport_type:
-            transport_lower = transport_type.lower()
-            
-            # Check transport/URL protocol compatibility
-            if transport_lower in ["http", "streamable_http"] and url_scheme not in ["http", "https"]:
-                raise McpInitializationError(
-                    f'Transport "{transport_type}" requires '
-                    f'http:// or https:// URL, but got: {url_scheme}://',
-                    server_name=server_name
-                )
-            elif transport_lower == "sse" and url_scheme not in ["http", "https"]:
-                raise McpInitializationError(
-                    f'Transport "sse" requires '
-                    f'http:// or https:// URL, but got: {url_scheme}://',
-                    server_name=server_name
-                )
-            elif transport_lower in ["ws", "websocket"] and url_scheme not in ["ws", "wss"]:
-                raise McpInitializationError(
-                    f'Transport "{transport_type}" requires '
-                    f'ws:// or wss:// URL, but got: {url_scheme}://',
-                    server_name=server_name
-                )
-            elif transport_lower == "stdio":
-                raise McpInitializationError(
-                    f'Transport "stdio" requires "command", '
-                    f'but "url" was provided',
-                    server_name=server_name
-                )
-        
-        # Validate URL scheme is supported
-        if url_scheme not in ["http", "https", "ws", "wss"]:
-            raise McpInitializationError(
-                f'Unsupported URL scheme "{url_scheme}". '
-                f'Supported schemes: http, https, ws, wss',
-                server_name=server_name
-            )
-    
-    elif has_command:
-        if transport_type:
-            transport_lower = transport_type.lower()
-            
-            # Check transport requires command
-            if transport_lower == "stdio":
-                pass  # Valid
-            elif transport_lower in ["http", "streamable_http", "sse", "ws", "websocket"]:
-                raise McpInitializationError(
-                    f'Transport "{transport_type}" requires "url", '
-                    f'but "command" was provided',
-                    server_name=server_name
-                )
-            else:
-                logger.warning(
-                    f'MCP server "{server_name}": Unknown transport type "{transport_type}", '
-                    f'treating as stdio'
-                )
 
 
 async def _connect_to_mcp_server(
@@ -904,97 +541,8 @@ async def _get_mcp_server_tools(
         # Wrap MCP tools into LangChain tools
         langchain_tools: list[BaseTool] = []
         for tool in tools_response.tools:
-
-            # Define adapter class to convert MCP tool to LangChain format
-            class McpToLangChainAdapter(BaseTool):
-                name: str = tool.name or "NO NAME"
-                description: str = tool.description or ""
-                # Convert JSON schema to Pydantic model for argument validation
-                args_schema: type[BaseModel] = jsonschema_to_pydantic(
-                    _fix_schema(tool.inputSchema)  # Apply schema conversion
-                )
-                session: ClientSession | None = None
-
-                def _run(self, **kwargs: Any) -> NoReturn:
-                    raise NotImplementedError(
-                        "MCP tools only support async operations"
-                    )
-
-                async def _arun(self, **kwargs: Any) -> Any:
-                    """Asynchronously executes the tool with given arguments.
-
-                    Logs input/output and handles errors.
-
-                    Args:
-                        **kwargs: Arguments to be passed to the MCP tool
-
-                    Returns:
-                        Formatted response from the MCP tool as a string
-
-                    Raises:
-                        ToolException: If the tool execution fails
-                    """
-                    logger.info(f'MCP tool "{server_name}"/"{self.name}" '
-                                f"received input: {kwargs}")
-
-                    try:
-                        result = await session.call_tool(self.name, kwargs)
-
-                        if hasattr(result, "isError") and result.isError:
-                            raise ToolException(
-                                f"Tool execution failed: {result.content}"
-                            )
-
-                        if not hasattr(result, "content"):
-                            return str(result)
-
-                        # Convert MCP TextContent items to string format
-                        # The library uses LangChain's `response_format: 'content'` (the default),
-                        # which only supports text strings and BaseTool._arun() expects string return type
-                        try:
-                            result_content_text = "\n\n".join(
-                                item.text
-                                for item in result.content
-                                if isinstance(item, mcp_types.TextContent)
-                            )
-                            # Alternative approach using JSON serialization (preserved for reference):
-                            # text_items = [
-                            #     item
-                            #     for item in result.content
-                            #     if isinstance(item, mcp_types.TextContent)
-                            # ]
-                            # result_content_text = to_json(text_items).decode()
-
-                        except KeyError as e:
-                            result_content_text = (
-                                f"Error in parsing result.content: {str(e)}; "
-                                f"contents: {repr(result.content)}"
-                            )
-
-                        # Log rough result size for monitoring
-                        size = len(result_content_text.encode())
-                        logger.info(f'MCP tool "{server_name}"/"{self.name}" '
-                                    f"received result (size: {size})")
-
-                        # If no text content, return a clear message
-                        # describing the situation.
-                        result_content_text = (
-                            result_content_text or
-                            "No text content available in response"
-                        )
-
-                        return result_content_text
-
-                    except Exception as e:
-                        logger.warn(
-                            f'MCP tool "{server_name}"/"{self.name}" '
-                            f"caused error:  {str(e)}"
-                        )
-                        if self.handle_tool_error:
-                            return f"Error executing MCP tool: {str(e)}"
-                        raise
-
-            langchain_tools.append(McpToLangChainAdapter())
+            adapter = create_mcp_langchain_adapter(tool, session, server_name, logger)
+            langchain_tools.append(adapter)
 
         # Log available tools for debugging
         logger.info(f'MCP server "{server_name}": {len(langchain_tools)} '
@@ -1006,28 +554,6 @@ async def _get_mcp_server_tools(
         raise
 
     return langchain_tools
-
-
-# A very simple pre-configured logger for fallback
-def _init_logger() -> logging.Logger:
-    """Creates a simple pre-configured logger.
-
-    Returns:
-        A configured Logger instance
-    """
-    logging.basicConfig(
-        level=logging.INFO,  # More reasonable default level
-        format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
-    )
-    # Only set MCP-related loggers to DEBUG for better MCP visibility
-    logger = logging.getLogger()
-    logging.getLogger("langchain_mcp_tools").setLevel(logging.DEBUG)
-    
-    # Keep HTTP libraries quieter
-    for lib in ["httpx", "urllib3", "requests", "anthropic", "openai"]:
-        logging.getLogger(lib).setLevel(logging.WARNING)
-    
-    return logger
 
 
 # Type hint for cleanup function
@@ -1052,9 +578,29 @@ Example usage:
 """
 
 
+def _init_logger(log_level=logging.INFO) -> logging.Logger:
+    """Creates a simple pre-configured logger.
+
+    Returns:
+        A configured Logger instance
+    """
+    logging.basicConfig(
+        level=logging.INFO,  # More reasonable default level
+        format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
+    )
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+    
+    # Keep HTTP libraries quieter
+    for lib in ["httpx", "urllib3", "requests", "anthropic", "openai"]:
+        logging.getLogger(lib).setLevel(logging.WARNING)
+    
+    return logger
+
+
 async def convert_mcp_to_langchain_tools(
     server_configs: McpServersConfig,
-    logger: logging.Logger | None = None
+    logger: logging.Logger | int | None = None
 ) -> tuple[list[BaseTool], McpServerCleanupFn]:
     """Initialize multiple MCP servers and convert their tools to LangChain format.
 
@@ -1088,6 +634,8 @@ async def convert_mcp_to_langchain_tools(
             servers or McpServerUrlBasedConfig for remote servers.
         logger: Optional logger instance. If None, creates a pre-configured
             logger with appropriate levels for MCP debugging.
+            If a logging level (e.g., `logging.DEBUG`), the pre-configured
+            logger will be initialized with that level.
 
     Returns:
         A tuple containing:
@@ -1131,6 +679,16 @@ async def convert_mcp_to_langchain_tools(
         if not logging.root.handlers and not logger.handlers:
             # No logging configured, use a simple pre-configured logger
             logger = _init_logger()
+    elif isinstance(logger, int):
+        # logger is actually a level like logging.DEBUG
+        logger = _init_logger(log_level=logger)
+    elif isinstance(logger, logging.Logger):
+        # already a logger, use as is
+        pass
+    else:
+        raise TypeError(
+            "logger must be a logging.Logger, int (log level), or None"
+        )
 
     # Initialize AsyncExitStack for managing multiple server lifecycles
     transports: list[Transport] = []

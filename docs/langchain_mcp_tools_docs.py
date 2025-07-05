@@ -249,6 +249,8 @@ async def convert_mcp_to_langchain_tools(
             servers or McpServerUrlBasedConfig for remote servers.
         logger: Optional logger instance. If None, creates a pre-configured
             logger with appropriate levels for MCP debugging.
+            If a logging level (e.g., `logging.DEBUG`), the pre-configured
+            logger will be initialized with that level.
 
     Returns:
         A tuple containing:

@@ -11,10 +11,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Minor README.md refinements
 
 
+## [0.2.9] - 2025-07-05
+
+### Changed
+- Update logger argument to take logging level (e.g. logging.DEBUG) as well
+- Separate out the tool conversion function into tool_adapter.py
+- Separate out the transport utility functions into ransport_utils.py
+- Update README.md
+- Update dependencies
+
+
 ## [0.2.8] - 2025-06-29
 
 ### Changed
-- Updated documentation
+- Update documentation
 - Use leading underscores for the internal functions
 
 
