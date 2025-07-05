@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Minor README.md refinements
 
+## [0.2.10] - 2025-07-06
+
+### Fixed
+- Properly export McpInitializationError
+
 
 ## [0.2.9] - 2025-07-05
 
