@@ -36,6 +36,7 @@ def init_logger() -> logging.Logger:
 
 async def run() -> None:
     load_dotenv()
+
     # If you are interested in testing the SSE/WS server connection, uncomment
     # one of the following code snippets and one of the appropriate "weather"
     # server configurations, while commenting out the others.
@@ -94,7 +95,7 @@ async def run() -> None:
             # },
 
             # "us-weather": {
-            #     "url": f"ws://localhost:{ws_server_port}/message"
+            #     "url": f"ws://localhost:{ws_server_port}/message",
             #     # optionally `"transport": "ws"` or `"type": "ws"`
             # },
             
@@ -102,7 +103,7 @@ async def run() -> None:
             # "brave-search": {
             #     "command": "npx",
             #     "args": [ "-y", "@modelcontextprotocol/server-brave-search"],
-            #     "env": { "BRAVE_API_KEY": os.environ.get('BRAVE_API_KEY', '') }
+            #     "env": { "BRAVE_API_KEY": os.environ.get('BRAVE_API_KEY') }
             # },
             
             # # Example of authentication via Authorization header
@@ -201,6 +202,10 @@ async def run() -> None:
         llm = init_chat_model("google_genai:gemini-2.5-flash")
         # llm = init_chat_model("google_genai:gemini-2.5-pro")
 
+        ### https://console.x.ai
+        # llm = init_chat_model("xai:grok-3-mini")
+        # llm = init_chat_model("xai:grok-4")
+
         agent = create_react_agent(
             llm,
             tools
@@ -238,6 +243,7 @@ async def run() -> None:
         print("\x1b[0m")   # reset the color
 
     finally:
+        # cleanup can be undefined when an exeption occurs during initialization
         if "cleanup" in locals():
             await cleanup()
 

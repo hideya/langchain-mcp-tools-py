@@ -1,57 +1,19 @@
-# MCP to LangChain Tools Conversion Library / Python [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/)
+# MCP to LangChain Tools Conversion Library / Python [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/) [![network dependents](https://dependents.info/hideya/langchain-mcp-tools-py/badge)](https://dependents.info/hideya/langchain-mcp-tools-py)
 
-A simple, lightweight library intended to simplify the use of
+A simple, lightweight library to use 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
-server tools with LangChain.
+server tools from LangChain.
 
-Its simplicity and extra features for stdio MCP servers can make it useful as a basis for your own customizations.
+<img style="float:right;width:450px;" alt="langchain-mcp-tools-diagram" src="https://raw.githubusercontent.com/hideya/langchain-mcp-tools-py/refs/heads/dev/docs/images/langchain-mcp-tools-diagram.png" />
+
+Its simplicity and extra features for local MCP servers can make it useful as a basis for your own customizations.
 However, it only supports text results of tool calls and does not support MCP features other than tools.
 
 [LangChain's **official LangChain MCP Adapters** library](https://pypi.org/project/langchain-mcp-adapters/),
 which supports comprehensive integration with LangChain, has been released.
 You may want to consider using it if you don't have specific needs for this library.
 
-## Introduction
-
-This package is intended to simplify the use of
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
-server tools with LangChain / Python.
-
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is the de facto industry standard
-that dramatically expands the scope of LLMs by enabling the integration of external tools and resources,
-including DBs, Cloud Storages, GitHub, Docker, Slack, and more.
-There are quite a few useful MCP servers already available.
-See [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers).
-
-This utility's goal is to make these numerous MCP servers easily accessible from LangChain.  
-It contains a utility function `convert_mcp_to_langchain_tools()`.  
-This async function handles parallel initialization of specified multiple MCP servers
-and converts their available tools into a list of LangChain-compatible tools.
-
-For detailed information on how to use this library, please refer to the following document:
-["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a).  
-A TypeScript equivalent of this utility is available
-[here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
-
-## Prerequisites
-
-- Python 3.11+
-
-## Installation
-
-```bash
-pip install langchain-mcp-tools
-```
-
-## API docs
-
-Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
-
-
 ## Quick Start
-
-A minimal but complete working usage example can be found
-[in this example in the langchain-mcp-tools-py-usage repo](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/main/src/example.py)
 
 `convert_mcp_to_langchain_tools()` utility function accepts MCP server configurations
 that follow the same structure as
@@ -95,7 +57,7 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model("google_genai:gemini-2.0-flash")
+llm = init_chat_model("google_genai:gemini-2.5-flash")
 
 # from langgraph.prebuilt import create_react_agent
 agent = create_react_agent(
@@ -104,8 +66,43 @@ agent = create_react_agent(
 )
 ```
 
+A minimal but complete working usage example can be found
+[in this example in the langchain-mcp-tools-py-usage repo](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/main/src/example.py)
+
 For hands-on experimentation with MCP server integration,
 try [this MCP Client CLI tool built with this library](https://pypi.org/project/mcp-chat/)
+
+## Prerequisites
+
+- Python 3.11+
+
+## Installation
+
+```bash
+pip install langchain-mcp-tools
+```
+
+## Introduction
+
+This package is intended to simplify the use of
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+server tools with LangChain / Python.
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is the de facto industry standard
+that dramatically expands the scope of LLMs by enabling the integration of external tools and resources,
+including DBs, Cloud Storages, GitHub, Docker, Slack, and more.
+There are quite a few useful MCP servers already available.
+See [MCP Server Listing on the Official Site](https://github.com/modelcontextprotocol/servers?tab=readme-ov-file#model-context-protocol-servers).
+
+This utility's goal is to make these numerous MCP servers easily accessible from LangChain.  
+It contains a utility function `convert_mcp_to_langchain_tools()`.  
+This async function handles parallel initialization of specified multiple MCP servers
+and converts their available tools into a list of LangChain-compatible tools.
+
+For detailed information on how to use this library, please refer to the following document:
+["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a).  
+A TypeScript equivalent of this utility is available
+[here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
 
 ## Building from Source
 
@@ -123,7 +120,9 @@ The library uses LangChain's `response_format: 'content'` (the default), which o
 While MCP tools can return multiple content types (text, images, etc.), this library currently filters and uses only text content.
 - **MCP Features**: Only MCP [Tools](https://modelcontextprotocol.io/docs/concepts/tools) are supported. Other MCP features like Resources, Prompts, and Sampling are not implemented.
 
-**Note:** The library automatically adds the `PATH` environment variable to stdio server configrations if not explicitly provided to ensure servers can find required executables.
+### Note
+
+- **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to stdio server configrations if not explicitly provided to ensure servers can find required executables.
 
 ## Features
 
@@ -206,7 +205,7 @@ The `"headers"` key can be used to pass HTTP headers to Streamable HTTP and SSE 
         "type": "http",
         "url": "https://api.githubcopilot.com/mcp/",
         "headers": {
-            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
         }
     },
 ```
@@ -267,6 +266,10 @@ Test implementations are provided:
 The library also supports authentication for SSE connections to MCP servers.
 Note that SSE transport is deprecated; Streamable HTTP is the recommended approach.
 
+## API docs
+
+Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
+
 ## Change Log
 
 Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)
@@ -320,6 +323,27 @@ Set `"__pre_validate_authentication": False` in your server config if:
    ```bash
    curl -H "Authorization: Bearer your-token" https://api.example.com/mcp/
    ```
+
+### Resource Management
+
+The returned `cleanup` function properly handles resource cleanup:
+
+- Closes all MCP server connections concurrently
+- Logs any cleanup failures
+- Continues cleanup of remaining servers even if some fail
+- Should always be called when done using the tools
+
+```python
+try:
+    tools, cleanup = await convert_mcp_to_langchain_tools(mcp_servers)
+
+    # Use tools with your LLM
+
+finally:
+    # cleanup can be undefined when an exeption occurs during initialization
+    if "cleanup" in locals():
+        await cleanup()
+```
 
 ### For Developers
 
