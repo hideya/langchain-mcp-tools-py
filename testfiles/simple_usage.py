@@ -194,7 +194,7 @@ async def run() -> None:
         
         ### https://platform.openai.com/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        # llm = init_chat_model("openai:gpt-4.1-nano")
+        # llm = init_chat_model("openai:gpt-4o-mini")
         # llm = init_chat_model("openai:o4-mini")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
