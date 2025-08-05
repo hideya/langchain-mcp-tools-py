@@ -4,7 +4,7 @@ A simple, lightweight library to use
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server tools from LangChain.
 
-<img style="float:right;width:450px;" alt="langchain-mcp-tools-diagram" src="https://raw.githubusercontent.com/hideya/langchain-mcp-tools-py/refs/heads/dev/docs/images/langchain-mcp-tools-diagram.png" />
+<img style="width:450px;" alt="langchain-mcp-tools-diagram" src="https://raw.githubusercontent.com/hideya/langchain-mcp-tools-py/refs/heads/main/docs/images/langchain-mcp-tools-diagram.png" />
 
 Its simplicity and extra features for local MCP servers can make it useful as a basis for your own customizations.
 However, it only supports text results of tool calls and does not support MCP features other than tools.
@@ -12,6 +12,16 @@ However, it only supports text results of tool calls and does not support MCP fe
 [LangChain's **official LangChain MCP Adapters** library](https://pypi.org/project/langchain-mcp-adapters/),
 which supports comprehensive integration with LangChain, has been released.
 You may want to consider using it if you don't have specific needs for this library.
+
+## Prerequisites
+
+- Python 3.11+
+
+## Installation
+
+```bash
+pip install langchain-mcp-tools
+```
 
 ## Quick Start
 
@@ -72,15 +82,8 @@ A minimal but complete working usage example can be found
 For hands-on experimentation with MCP server integration,
 try [this MCP Client CLI tool built with this library](https://pypi.org/project/mcp-chat/)
 
-## Prerequisites
-
-- Python 3.11+
-
-## Installation
-
-```bash
-pip install langchain-mcp-tools
-```
+A TypeScript equivalent of this utility is available
+[here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
 
 ## Introduction
 
@@ -100,13 +103,7 @@ This async function handles parallel initialization of specified multiple MCP se
 and converts their available tools into a list of LangChain-compatible tools.
 
 For detailed information on how to use this library, please refer to the following document:
-["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a).  
-A TypeScript equivalent of this utility is available
-[here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
-
-## Building from Source
-
-See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
+["Supercharging LangChain: Integrating 2000+ MCP with ReAct"](https://medium.com/@h1deya/supercharging-langchain-integrating-450-mcp-with-react-d4e467cbf41a).
 
 ## MCP Protocol Support
 
@@ -123,6 +120,14 @@ While MCP tools can return multiple content types (text, images, etc.), this lib
 ### Note
 
 - **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to stdio server configrations if not explicitly provided to ensure servers can find required executables.
+
+## API docs
+
+Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
+
+## Building from Source
+
+See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
 
 ## Features
 
@@ -265,10 +270,6 @@ Test implementations are provided:
 
 The library also supports authentication for SSE connections to MCP servers.
 Note that SSE transport is deprecated; Streamable HTTP is the recommended approach.
-
-## API docs
-
-Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
 
 ## Change Log
 
