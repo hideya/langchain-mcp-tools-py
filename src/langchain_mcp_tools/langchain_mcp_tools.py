@@ -537,7 +537,7 @@ async def _get_mcp_server_tools(
         for tool in langchain_tools:
             logger.info(f"- {tool.name}")
     except Exception as e:
-        logger.error(f"Error getting MCP tools: {str(e)}")
+        logger.error(f'Error getting MCP tools: "{server_name}/{tool.name}": {str(e)}')
         raise
 
     return langchain_tools
@@ -565,23 +565,36 @@ Example usage:
 """
 
 
+class ColorFormatter(logging.Formatter):
+    COLORS = {
+        'DEBUG': '\x1b[90m',   # Gray
+        'INFO': '\x1b[90m',    # Gray
+        'WARNING': '\x1b[93m', # Yellow
+        'ERROR': '\x1b[91m',   # Red
+        'CRITICAL': '\x1b[1;101m' # Red background, Bold text
+    }
+    RESET = '\x1b[0m'
+
+    def format(self, record):
+        levelname_color = self.COLORS.get(record.levelname, '')
+        record.levelname = f"{levelname_color}[{record.levelname}]{self.RESET}"
+        return super().format(record)
+
+
 def _init_logger(log_level=logging.INFO) -> logging.Logger:
     """Creates a simple pre-configured logger.
 
     Returns:
         A configured Logger instance
     """
-    logging.basicConfig(
-        level=logging.INFO,  # More reasonable default level
-        format="\x1b[90m[%(levelname)s]\x1b[0m %(message)s"
-    )
+    handler = logging.StreamHandler()
+    handler.setFormatter(ColorFormatter("%(levelname)s %(message)s"))
+    
     logger = logging.getLogger()
     logger.setLevel(log_level)
-    
-    # Keep HTTP libraries quieter
-    for lib in ["httpx", "urllib3", "requests", "anthropic", "openai"]:
-        logging.getLogger(lib).setLevel(logging.WARNING)
-    
+    logger.handlers = []  # Clear existing handlers
+    logger.addHandler(handler)
+
     return logger
 
 

@@ -8,7 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- Improve the default logger
 - Minor README.md refinements
+
+### Added
+- Test usage with xAI Grok
+
 
 ## [0.2.10] - 2025-07-06
 
