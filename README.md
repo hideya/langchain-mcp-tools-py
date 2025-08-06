@@ -1,10 +1,10 @@
-# MCP to LangChain Tools Conversion Library / Python [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/) [![network dependents](https://dependents.info/hideya/langchain-mcp-tools-py/badge)](https://dependents.info/hideya/langchain-mcp-tools-py)
+# MCP to LangChain Tools Conversion Library / Python [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/)
 
 A simple, lightweight library to use 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 server tools from LangChain.
 
-<img style="width:450px;" alt="langchain-mcp-tools-diagram" src="https://raw.githubusercontent.com/hideya/langchain-mcp-tools-py/refs/heads/main/docs/images/langchain-mcp-tools-diagram.png" />
+<img width="500px" alt="langchain-mcp-tools-diagram" src="https://raw.githubusercontent.com/hideya/langchain-mcp-tools-py/refs/heads/main/docs/images/langchain-mcp-tools-diagram.png" />
 
 Its simplicity and extra features for local MCP servers can make it useful as a basis for your own customizations.
 However, it only supports text results of tool calls and does not support MCP features other than tools.
