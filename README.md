@@ -1,4 +1,4 @@
-# MCP to LangChain Tools Conversion Library / Python [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/)
+# MCP to LangChain Tools Conversion Library / Python [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) [![pypi version](https://img.shields.io/pypi/v/langchain-mcp-tools.svg)](https://pypi.org/project/langchain-mcp-tools/) [![network dependents](https://dependents.info/hideya/langchain-mcp-tools-py/badge)](https://dependents.info/hideya/langchain-mcp-tools-py)
 
 A simple, lightweight library to use 
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
