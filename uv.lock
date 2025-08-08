@@ -646,6 +646,23 @@ wheels = [
 ]
 
 [[package]]
+name = "groq"
+version = "0.31.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/a2/77fd1460e7d55859219223719aa44ae8902a3a1ad333cd5faf330eb0b894/groq-0.31.0.tar.gz", hash = "sha256:182252e9bf0d696df607c137cbafa851d2c84aaf94bcfe9165c0bc231043490c", size = 136237, upload-time = "2025-08-05T23:14:01.183Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/f8/14672d69a91495f43462c5490067eeafc30346e81bda1a62848e897f9bc3/groq-0.31.0-py3-none-any.whl", hash = "sha256:5e3c7ec9728b7cccf913da982a9b5ebb46dc18a070b35e12a3d6a1e12d6b0f7f", size = 131365, upload-time = "2025-08-05T23:13:59.768Z" },
+]
+
+[[package]]
 name = "grpcio"
 version = "1.74.0"
 source = { registry = "https://pypi.org/simple" }
@@ -938,6 +955,19 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-cerebras"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "langchain-openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/61/9a4cb075d2c400690fc7738fa936193461f9d0b92dea2d5e27fd44244546/langchain_cerebras-0.5.0.tar.gz", hash = "sha256:24cfe76358cd8c779f33c77708df08cc5fec81ed13797830396be0f52abdd80a", size = 7402, upload-time = "2025-01-10T17:45:36.022Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/78/1dacd83bd324c5c64b88367facb86ad9e5e5d89dfd0dceaed3d444c42df6/langchain_cerebras-0.5.0-py3-none-any.whl", hash = "sha256:f129df699d6eb71d8e2602d7abe9ae75c289168b2e52d33cdefe5d4982e027b9", size = 7839, upload-time = "2025-01-10T17:45:33.945Z" },
+]
+
+[[package]]
 name = "langchain-core"
 version = "0.3.72"
 source = { registry = "https://pypi.org/simple" }
@@ -971,6 +1001,19 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-groq"
+version = "0.3.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "groq" },
+    { name = "langchain-core" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/54/9d/1bbe0b8d8368ac1df2eabd14be93e052cddac969573b910db4457237bce2/langchain_groq-0.3.7.tar.gz", hash = "sha256:4d799aa565f31e51c632f0f20c588f21c5a0e6c6dd2303efaef43351f9b41bd4", size = 25004, upload-time = "2025-08-05T19:20:45.436Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/31/5f32d15105d0160c3753113d5cca5787236c6d2717d25126597d8adc39dd/langchain_groq-0.3.7-py3-none-any.whl", hash = "sha256:2e13870534c032fe1facde3a6ab1fb59af6f1e7a2763125ad549d8e403fc9d00", size = 16418, upload-time = "2025-08-05T19:20:44.4Z" },
+]
+
+[[package]]
 name = "langchain-mcp-tools"
 version = "0.2.12"
 source = { virtual = "." }
@@ -987,7 +1030,9 @@ dev = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "langchain-anthropic" },
+    { name = "langchain-cerebras" },
     { name = "langchain-google-genai" },
+    { name = "langchain-groq" },
     { name = "langchain-openai" },
     { name = "langchain-xai" },
     { name = "langgraph" },
@@ -1005,8 +1050,10 @@ requires-dist = [
     { name = "jsonschema-pydantic", specifier = ">=0.6" },
     { name = "langchain", specifier = ">=0.3.26" },
     { name = "langchain-anthropic", marker = "extra == 'dev'", specifier = ">=0.3.17" },
+    { name = "langchain-cerebras", marker = "extra == 'dev'", specifier = ">=0.5.0" },
     { name = "langchain-core", specifier = ">=0.3.66" },
     { name = "langchain-google-genai", marker = "extra == 'dev'", specifier = ">=2.1.5" },
+    { name = "langchain-groq", marker = "extra == 'dev'", specifier = ">=0.3.7" },
     { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=0.3.0" },
     { name = "langchain-xai", marker = "extra == 'dev'", specifier = ">=0.2.4" },
     { name = "langgraph", marker = "extra == 'dev'", specifier = ">=0.2.62" },

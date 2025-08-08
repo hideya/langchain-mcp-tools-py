@@ -205,6 +205,15 @@ async def run() -> None:
         ### https://console.x.ai
         # llm = init_chat_model("xai:grok-3-mini")
         # llm = init_chat_model("xai:grok-4")
+        
+        # https://console.groq.com/docs/models
+        # https://console.groq.com/dashboard/usage
+        # llm = init_chat_model("groq:openai/gpt-oss-20b")
+        # llm = init_chat_model("groq:openai/gpt-oss-120b")
+
+        # hhttps://cloud.cerebras.ai
+        # from langchain_cerebras import ChatCerebras
+        # llm = ChatCerebras(model="gpt-oss-120b")
 
         agent = create_react_agent(
             llm,

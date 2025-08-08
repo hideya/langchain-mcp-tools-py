@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Usage example of gpt-oss-120b/20b on Cerebras / Groq
+
+
 ## [0.2.12] - 2025-08-06
 
 ### Fixed

@@ -45,7 +45,7 @@ mcp_servers = {
         "type": "http",
         "url": "https://api.githubcopilot.com/mcp/",
         "headers": {
-            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '')}"
+            "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
         }
     },
 }
