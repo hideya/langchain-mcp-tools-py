@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Usage example of gpt-oss-120b/20b on Cerebras / Groq
 
+### Changed
+- Update usage example to test newer OpenAI models
+
 
 ## [0.2.12] - 2025-08-06
 

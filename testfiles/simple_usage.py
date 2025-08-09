@@ -194,8 +194,8 @@ async def run() -> None:
         
         ### https://platform.openai.com/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        # llm = init_chat_model("openai:gpt-4o-mini")
-        # llm = init_chat_model("openai:o4-mini")
+        # llm = init_chat_model("openai:gpt-4.1-nano")
+        # llm = init_chat_model("openai:gpt-5-mini")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
@@ -206,12 +206,13 @@ async def run() -> None:
         # llm = init_chat_model("xai:grok-3-mini")
         # llm = init_chat_model("xai:grok-4")
         
-        # https://console.groq.com/docs/models
-        # https://console.groq.com/dashboard/usage
+        ### https://console.groq.com/docs/models
+        ### https://console.groq.com/dashboard/usage
         # llm = init_chat_model("groq:openai/gpt-oss-20b")
         # llm = init_chat_model("groq:openai/gpt-oss-120b")
 
-        # hhttps://cloud.cerebras.ai
+        ### hhttps://cloud.cerebras.ai
+        ### No init_chat_model() support for "cerebras" yet
         # from langchain_cerebras import ChatCerebras
         # llm = ChatCerebras(model="gpt-oss-120b")
 
