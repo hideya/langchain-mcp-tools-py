@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [0.2.13]
 
 ### Added
-- Usage example of gpt-oss-120b/20b on Cerebras / Groq
+- Usage examples of gpt-oss-120b/20b on Cerebras / Groq
 
 ### Changed
 - Update usage example to test newer OpenAI models

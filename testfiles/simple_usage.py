@@ -124,7 +124,7 @@ async def run() -> None:
             #     "env": {
             #         # Although the following implies that this MCP server is designed for
             #         # OpenAI LLMs, it works fine with others models.
-            #         # Tested Claude and Gemini (with schema adjustments).
+            #         # Tested Claude and Gemini
             #         "OPENAPI_MCP_HEADERS": (
             #             '{"Authorization": "Bearer '
             #             f'{os.environ.get("NOTION_INTEGRATION_SECRET")}", '
