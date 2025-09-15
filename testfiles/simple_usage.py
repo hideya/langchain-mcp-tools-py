@@ -118,25 +118,33 @@ async def run() -> None:
             #     }
             # },
             
+            # # NOTE: comment out "fetch" when you use "notion".
+            # # They both have a tool named "fetch," which causes a conflict.
+            # #
+            # # Run Notion remote MCP server via mcp-remote
+            # "notion": {
+            #     "command": "npx",  # OAuth via "mcp-remote"
+            #     "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
+            # },
+                        
+            # # The following Notion local MCP server is not recommended anymore?
+            # # Refs:
+            # # - https://developers.notion.com/docs/get-started-with-mcp
+            # # - https://www.npmjs.com/package/@notionhq/notion-mcp-server
             # "notion": {
             #     "command": "npx",
             #     "args": ["-y", "@notionhq/notion-mcp-server"],
             #     "env": {
-            #         # Although the following implies that this MCP server is designed for
-            #         # OpenAI LLMs, it works fine with others models.
-            #         # Tested Claude and Gemini
-            #         "OPENAPI_MCP_HEADERS": (
-            #             '{"Authorization": "Bearer '
-            #             f'{os.environ.get("NOTION_INTEGRATION_SECRET")}", '
-            #             '"Notion-Version": "2022-06-28"}')
-            #     },
+            #         "NOTION_TOKEN": os.environ.get("NOTION_INTEGRATION_SECRET", "")
+            #     }
             # },
             
-            # "notion": {
+            # "airtable": {
+            #     "transport": "stdio",
             #     "command": "npx",
-            #     "args": ["-y", "@suekou/mcp-notion-server"],
+            #     "args": ["-y", "airtable-mcp-server"],
             #     "env": {
-            #         "NOTION_API_TOKEN": os.environ.get("NOTION_INTEGRATION_SECRET")
+            #         "AIRTABLE_API_KEY": f"{os.environ.get('AIRTABLE_API_KEY')}"
             #     }
             # },
             
@@ -206,12 +214,13 @@ async def run() -> None:
         # llm = init_chat_model("xai:grok-3-mini")
         # llm = init_chat_model("xai:grok-4")
         
-        ### https://console.groq.com/docs/models
+        ### https://console.groq.com/docs/rate-limits
         ### https://console.groq.com/dashboard/usage
         # llm = init_chat_model("groq:openai/gpt-oss-20b")
         # llm = init_chat_model("groq:openai/gpt-oss-120b")
 
-        ### hhttps://cloud.cerebras.ai
+        ### https://cloud.cerebras.ai
+        ### https://inference-docs.cerebras.ai/models/openai-oss
         ### No init_chat_model() support for "cerebras" yet
         # from langchain_cerebras import ChatCerebras
         # llm = ChatCerebras(model="gpt-oss-120b")
@@ -226,13 +235,14 @@ async def run() -> None:
         print("\x1b[0m");  # reset the color
 
         query = "Are there any weather alerts in California?"
-        # query = "Tell me how LLMs work in a few sentences"
         # query = "Read the news headlines on bbc.com"
         # query = "Read and briefly summarize the LICENSE file"
-        # query = "Tell me the number of directories in the current directory"
+        # query = "Tell me how many directories there are in `.`"
+        # query = "Tell me about my GitHub profile"
         # query = ("Make a new table in DB and put items apple and orange with counts 123 and 345 respectively, "
         #         "then increment the coutns by 1, and show all the items in the table.")
-        # query = "Open bbc.com page"
+        # query = "Use sequential-thinking and plan a trip from Tokyo to San Francisco"
+        # query = "Open the BBC.com page, then close it"
         # query = "Tell me about my Notion account"
         # query = "What's the news from Tokyo today?"
         

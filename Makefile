@@ -67,5 +67,5 @@ deploy-docs: sphinx
 
 clean:
 	git clean -fdxn -e .env
-	@read -p 'OK?'
+	@read -p '\nOK? '
 	git clean -fdx -e .env

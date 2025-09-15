@@ -48,6 +48,10 @@ mcp_servers = {
             "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
         }
     },
+    "notion": {  # For MCP servers that require OAuth, consider using "mcp-remote"
+        "command": "npx",
+        "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
+    },
 }
 
 tools, cleanup = await convert_mcp_to_langchain_tools(
@@ -74,6 +78,26 @@ agent = create_react_agent(
     llm,
     tools
 )
+```
+
+The returned `cleanup` function properly handles resource cleanup:
+
+- Closes all MCP server connections concurrently and logs any cleanup failures
+- Continues cleanup of remaining servers even if some fail
+- Should always be called when done using the tools
+
+It is typically invoked in a finally block:
+
+```python
+try:
+    tools, cleanup = await convert_mcp_to_langchain_tools(mcp_servers)
+
+    # Use tools with your LLM
+
+finally:
+    # cleanup can be undefined when an exeption occurs during initialization
+    if "cleanup" in locals():
+        await cleanup()
 ```
 
 A minimal but complete working usage example can be found
@@ -120,14 +144,6 @@ While MCP tools can return multiple content types (text, images, etc.), this lib
 ### Note
 
 - **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to stdio server configrations if not explicitly provided to ensure servers can find required executables.
-
-## API docs
-
-Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
-
-## Building from Source
-
-See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
 
 ## Features
 
@@ -231,6 +247,17 @@ alone is not enough; your GitHub account must have an active Copilot subscriptio
 
 Streamable HTTP is the modern MCP transport that replaces the older HTTP+SSE transport. According to the [official MCP documentation](https://modelcontextprotocol.io/docs/concepts/transports): "SSE as a standalone transport is deprecated as of protocol version 2025-03-26. It has been replaced by Streamable HTTP, which incorporates SSE as an optional streaming mechanism."
 
+### Accessing Remote MCP Servers with OAuth Quickly
+
+If you need to use MCP servers that require OAuth, consider using **"[mcp-remote](https://www.npmjs.com/package/mcp-remote)"**.
+
+```py
+    "notionMCP": {
+        "command": "npx",
+        "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
+    },
+```
+
 ### Authentication Support for Streamable HTTP Connections
 
 The library supports OAuth 2.1 authentication for Streamable HTTP connections:
@@ -271,9 +298,17 @@ Test implementations are provided:
 The library also supports authentication for SSE connections to MCP servers.
 Note that SSE transport is deprecated; Streamable HTTP is the recommended approach.
 
+## API docs
+
+Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
+
 ## Change Log
 
 Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)
+
+## Building from Source
+
+See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
 
 ## Appendix
 
@@ -325,27 +360,6 @@ Set `"__pre_validate_authentication": False` in your server config if:
    curl -H "Authorization: Bearer your-token" https://api.example.com/mcp/
    ```
 
-### Resource Management
-
-The returned `cleanup` function properly handles resource cleanup:
-
-- Closes all MCP server connections concurrently
-- Logs any cleanup failures
-- Continues cleanup of remaining servers even if some fail
-- Should always be called when done using the tools
-
-```python
-try:
-    tools, cleanup = await convert_mcp_to_langchain_tools(mcp_servers)
-
-    # Use tools with your LLM
-
-finally:
-    # cleanup can be undefined when an exeption occurs during initialization
-    if "cleanup" in locals():
-        await cleanup()
-```
-
 ### For Developers
 
-See [TECHNICAL.md](TECHNICAL.md) for technical details about implementation challenges and solutions.
+See [TECHNICAL.md](./TECHNICAL.md) for technical details about implementation challenges and solutions.

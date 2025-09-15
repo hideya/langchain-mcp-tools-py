@@ -5,10 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.2.13]
+
+## [Unreleased]
+
+### Changed
+- Minor updates to REAMDE and usage examples
+
+
+## [0.2.13] - 2025-08-18
 
 ### Added
 - Usage examples of gpt-oss-120b/20b on Cerebras / Groq
+  (confirmed to work with Cerebras and Groq)
 
 ### Changed
 - Update usage example to test newer OpenAI models
