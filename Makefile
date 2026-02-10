@@ -65,7 +65,7 @@ sphinx: install
 deploy-docs: sphinx
 	ghp-import -n -p -f docs/_build/html
 
-clean:
+cleanall:
 	git clean -fdxn -e .env
 	@read -p 'OK? '
 	git clean -fdx -e .env

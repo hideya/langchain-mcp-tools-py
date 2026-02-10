@@ -8,9 +8,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Filter out None values for optional parameters when calling MCP tools
+  LangChain 1.2.x passes all parameters including optional ones with None values,
+  but MCP servers expect optional parameters to be omitted entirely
+
 ### Changed
-- Update simple_usage.py to tesk newer LLM models
-- Minor updates to REAMDE and usage examples
+- Confirmed compatibility with LangChain 1.2.9+
+- Update simple_usage.py to test newer LLM models
+- Minor updates to README and usage examples
 
 
 ## [0.2.13] - 2025-08-18

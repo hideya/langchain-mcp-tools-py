@@ -119,7 +119,12 @@ def create_mcp_langchain_adapter(
                         f"received input: {kwargs}")
 
             try:
-                result = await self.session.call_tool(self.name, kwargs)
+                # Filter out None values for optional parameters
+                # LangChain 1.2.x started passing all parameters from the schema to the tool,
+                # including optional ones with None values
+                # MCP servers expect optional params to be omitted, not sent as null
+                filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+                result = await self.session.call_tool(self.name, filtered_kwargs)
 
                 # Check for MCP tool execution errors
                 if hasattr(result, "isError") and result.isError:

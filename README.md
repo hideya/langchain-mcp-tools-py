@@ -71,11 +71,11 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model("google_genai:gemini-2.5-flash")
+model = init_chat_model("google_genai:gemini-2.5-flash")
 
-# from langgraph.prebuilt import create_react_agent
-agent = create_react_agent(
-    llm,
+# from langchain.agents import create_agent
+agent = create_agent(
+    model,
     tools
 )
 ```

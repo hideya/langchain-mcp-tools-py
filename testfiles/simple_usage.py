@@ -9,8 +9,8 @@ from contextlib import ExitStack
 try:
     from dotenv import load_dotenv
     from langchain.chat_models import init_chat_model
-    from langchain.schema import HumanMessage
-    from langgraph.prebuilt import create_react_agent
+    from langchain_core.messages import HumanMessage
+    from langchain.agents import create_agent
 except ImportError as e:
     print(f"\nError: Required package not found: {e}")
     print("Please ensure all required packages are installed\n")
@@ -76,7 +76,14 @@ async def run() -> None:
                 "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
             },
         }
-
+        
+        queries = [
+            "Read and briefly summarize the LICENSE file",
+            "Fetch the raw HTML content from bbc.com and tell me the titile",
+            "Tell me about my GitHub profile",
+            "Tell me about my Notion account",
+        ]
+        
         # If you are interested in MCP server's stderr redirection,
         # uncomment the following code snippets.
         #
@@ -100,50 +107,44 @@ async def run() -> None:
         
         ### https://developers.openai.com/api/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        # llm = init_chat_model("openai:gpt-5-mini")
-        # llm = init_chat_model("openai:gpt-5.2")
+        # model_name = "openai:gpt-5-mini"
+        # model_name = "openai:gpt-5.2")
 
         ### https://platform.claude.com/docs/en/about-claude/models/overview
         ### https://console.anthropic.com/settings/billing
-        # llm = init_chat_model("anthropic:claude-3-5-haiku-latest")
-        # llm = init_chat_model("anthropic:claude-haiku-4-5")
+        # model_name = "anthropic:claude-3-5-haiku-latest")
+        # model_name = "anthropic:claude-haiku-4-5")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
-        # llm = init_chat_model("google_genai:gemini-2.5-flash")
-        # llm = init_chat_model("google_genai:gemini-3-flash-preview") // <== Function call is missing a thought_signature
+        # model_name = "google_genai:gemini-2.5-flash")
+        model_name = "google_genai:gemini-3-flash-preview"
 
         ### https://console.x.ai
-        # llm = init_chat_model("xai:grok-3-mini")
-        # llm = init_chat_model("xai:grok-4-1-fast-non-reasoning")
+        # model_name = "xai:grok-3-mini")
+        # model_name = "xai:grok-4-1-fast-non-reasoning")
         
         ### https://console.groq.com/docs/rate-limits
         ### https://console.groq.com/dashboard/usage
-        # llm = init_chat_model("groq:openai/gpt-oss-20b")
-        # llm = init_chat_model("groq:openai/gpt-oss-120b")
+        # model_name = "groq:openai/gpt-oss-20b")
+        # model_name = "groq:openai/gpt-oss-120b")
 
         ### https://cloud.cerebras.ai
         ### https://inference-docs.cerebras.ai/models/openai-oss
-        ### No init_chat_model() support for "cerebras" yet
-        # # llm = init_chat_model("cerebras:gpt-oss-120b")
+        # FIXME: init_chat_model() doesn't support "cerebras"
         # from langchain_cerebras import ChatCerebras
-        # llm = ChatCerebras(model="gpt-oss-120b")
+        # model = ChatCerebras(model="gpt-oss-120b")
 
-        agent = create_react_agent(
-            llm,
+        model = init_chat_model(model_name)
+
+        agent = create_agent(
+            model,
             tools
         )
         
-        print("\x1b[32m");  # color to green
-        print("\nLLM model:", getattr(llm, 'model', getattr(llm, 'model_name', 'unknown')))
-        print("\x1b[0m");  # reset the color
-
-        queries = [
-            # "Read and briefly summarize the LICENSE file",
-            # "Fetch the raw HTML content from bbc.com and tell me the titile",
-            # "Tell me about my GitHub profile",
-            "Tell me about my Notion account",
-        ]
+        print("\x1b[32m", end="")  # color to green
+        print("\nLLM model:", getattr(model, 'model', getattr(model, 'model_name', 'unknown')))
+        print("\x1b[0m", end="")  # reset the color
         
         for query in queries:
             print("\x1b[33m")  # color to yellow
@@ -156,7 +157,28 @@ async def run() -> None:
 
             result_messages = result["messages"]
             # the last message should be an AIMessage
-            response = result_messages[-1].content
+            response_content = result_messages[-1].content
+            
+            # Handle both string and list content (for multimodal models)
+            # NOTE: Gemini 3 preview returns a list content, even for a single text
+            if isinstance(response_content, str):
+                response = response_content
+            elif isinstance(response_content, list):
+                # Extract text from content blocks
+                text_parts = []
+                for block in response_content:
+                    if isinstance(block, dict) and "text" in block:
+                        text_parts.append(block["text"])
+                    elif isinstance(block, str):
+                        text_parts.append(block)
+                    elif hasattr(block, "text"):
+                        text_parts.append(block.text)
+                response = " ".join(text_parts) if text_parts else ""
+                print(response)
+            else:
+                raise TypeError(
+                    f"Unexpected response content type: {type(response_content)}"
+                )
 
             print("\x1b[36m")  # color to cyan
             print(response)
