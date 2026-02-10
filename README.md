@@ -11,7 +11,7 @@ However, it only supports text results of tool calls and does not support MCP fe
 
 [LangChain's **official LangChain MCP Adapters** library](https://pypi.org/project/langchain-mcp-adapters/),
 which supports comprehensive integration with LangChain, has been released.
-You may want to consider using it if you don't have specific needs for this library.
+You might want to consider using it if the extra features that this library supports are not necessary.
 
 ## Prerequisites
 

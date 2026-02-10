@@ -37,16 +37,6 @@ def init_logger() -> logging.Logger:
 async def run() -> None:
     load_dotenv()
 
-    # If you are interested in testing the SSE/WS server connection, uncomment
-    # one of the following code snippets and one of the appropriate "weather"
-    # server configurations, while commenting out the others.
-
-    # sse_server_process, sse_server_port = start_remote_mcp_server_locally(
-    #     "SSE", "npx -y @h1deya/mcp-server-weather")
-
-    # ws_server_process, ws_server_port = start_remote_mcp_server_locally(
-    #     "WS", "npx -y @h1deya/mcp-server-weather")
-
     try:
         mcp_servers: McpServersConfig = {
             "filesystem": {
@@ -67,111 +57,24 @@ async def run() -> None:
                     "mcp-server-fetch"
                 ]
             },
-
-            "us-weather": {  # US weather only
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "@h1deya/mcp-server-weather"
-                ]
+            
+            # Example of authentication via Authorization header
+            # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
+            "github": {
+                # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
+                "type": "http",
+                # "__pre_validate_authentication": False,
+                "url": "https://api.githubcopilot.com/mcp/",
+                "headers": {
+                    "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
+                }
             },
-
-            # # Auto-detection example: This will try Streamable HTTP first, then fallback to SSE
-            # "us-weather": {
-            #     "url": f"http://localhost:{sse_server_port}/sse"
-            # },
             
-            # # THIS DOESN'T WORK: Example of explicit transport selection:
-            # "us-weather": {
-            #     "url": f"http://localhost:{streamable_http_server_port}/mcp",
-            #     "transport": "streamable_http"  # Force Streamable HTTP
-            #     # "type": "http"  # VSCode-style config also works instead of the above
-            # },
-            
-            # "us-weather": {
-            #     "url": f"http://localhost:{sse_server_port}/sse",
-            #     "transport": "sse"  # Force SSE
-            #     # "type": "sse"  # This also works instead of the above
-            # },
-
-            # "us-weather": {
-            #     "url": f"ws://localhost:{ws_server_port}/message",
-            #     # optionally `"transport": "ws"` or `"type": "ws"`
-            # },
-            
-            # # https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search
-            # "brave-search": {
-            #     "command": "npx",
-            #     "args": [ "-y", "@modelcontextprotocol/server-brave-search"],
-            #     "env": { "BRAVE_API_KEY": os.environ.get('BRAVE_API_KEY') }
-            # },
-            
-            # # Example of authentication via Authorization header
-            # # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
-            # "github": {
-            #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
-            #     "type": "http",
-            #     # "__pre_validate_authentication": False,
-            #     "url": "https://api.githubcopilot.com/mcp/",
-            #     "headers": {
-            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
-            #     }
-            # },
-            
-            # # NOTE: comment out "fetch" when you use "notion".
-            # # They both have a tool named "fetch," which causes a conflict.
-            # #
-            # # Run Notion remote MCP server via mcp-remote
-            # "notion": {
-            #     "command": "npx",  # OAuth via "mcp-remote"
-            #     "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
-            # },
-                        
-            # # The following Notion local MCP server is not recommended anymore?
-            # # Refs:
-            # # - https://developers.notion.com/docs/get-started-with-mcp
-            # # - https://www.npmjs.com/package/@notionhq/notion-mcp-server
-            # "notion": {
-            #     "command": "npx",
-            #     "args": ["-y", "@notionhq/notion-mcp-server"],
-            #     "env": {
-            #         "NOTION_TOKEN": os.environ.get("NOTION_INTEGRATION_SECRET", "")
-            #     }
-            # },
-            
-            # "airtable": {
-            #     "transport": "stdio",
-            #     "command": "npx",
-            #     "args": ["-y", "airtable-mcp-server"],
-            #     "env": {
-            #         "AIRTABLE_API_KEY": f"{os.environ.get('AIRTABLE_API_KEY')}"
-            #     }
-            # },
-            
-            # "sqlite": {
-            #     "command": "uvx",
-            #     "args": [
-            #         "mcp-server-sqlite",
-            #         "--db-path",
-            #         "mcp-server-sqlite-test.sqlite3"
-            #     ],
-            #     "cwd": "/tmp"  # the working directory to be use by the server
-            # },
-
-            # "sequential-thinking": {
-            #     "command": "npx",
-            #     "args": [
-            #         "-y",
-            #         "@modelcontextprotocol/server-sequential-thinking"
-            #     ]
-            # },
-
-            # "playwright": {
-            #     "command": "npx",
-            #     "args": [
-            #         "@playwright/mcp@latest"
-            #     ]
-            # },
+            # For MCP servers that require OAuth, consider using "mcp-remote"
+            "notion": {
+                "command": "npx",
+                "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
+            },
         }
 
         # If you are interested in MCP server's stderr redirection,
@@ -194,25 +97,25 @@ async def run() -> None:
             # logging.DEBUG
             # init_logger()
         )
+        
+        ### https://developers.openai.com/api/docs/pricing
+        ### https://platform.openai.com/settings/organization/billing/overview
+        # llm = init_chat_model("openai:gpt-5-mini")
+        # llm = init_chat_model("openai:gpt-5.2")
 
-        ### https://docs.anthropic.com/en/docs/about-claude/pricing
+        ### https://platform.claude.com/docs/en/about-claude/models/overview
         ### https://console.anthropic.com/settings/billing
         # llm = init_chat_model("anthropic:claude-3-5-haiku-latest")
-        # llm = init_chat_model("anthropic:claude-sonnet-4-0")
-        
-        ### https://platform.openai.com/docs/pricing
-        ### https://platform.openai.com/settings/organization/billing/overview
-        # llm = init_chat_model("openai:gpt-4.1-nano")
-        # llm = init_chat_model("openai:gpt-5-mini")
+        # llm = init_chat_model("anthropic:claude-haiku-4-5")
         
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
-        llm = init_chat_model("google_genai:gemini-2.5-flash")
-        # llm = init_chat_model("google_genai:gemini-2.5-pro")
+        # llm = init_chat_model("google_genai:gemini-2.5-flash")
+        # llm = init_chat_model("google_genai:gemini-3-flash-preview") // <== Function call is missing a thought_signature
 
         ### https://console.x.ai
         # llm = init_chat_model("xai:grok-3-mini")
-        # llm = init_chat_model("xai:grok-4")
+        # llm = init_chat_model("xai:grok-4-1-fast-non-reasoning")
         
         ### https://console.groq.com/docs/rate-limits
         ### https://console.groq.com/dashboard/usage
@@ -222,6 +125,7 @@ async def run() -> None:
         ### https://cloud.cerebras.ai
         ### https://inference-docs.cerebras.ai/models/openai-oss
         ### No init_chat_model() support for "cerebras" yet
+        # # llm = init_chat_model("cerebras:gpt-oss-120b")
         # from langchain_cerebras import ChatCerebras
         # llm = ChatCerebras(model="gpt-oss-120b")
 
@@ -234,33 +138,29 @@ async def run() -> None:
         print("\nLLM model:", getattr(llm, 'model', getattr(llm, 'model_name', 'unknown')))
         print("\x1b[0m");  # reset the color
 
-        query = "Are there any weather alerts in California?"
-        # query = "Read the news headlines on bbc.com"
-        # query = "Read and briefly summarize the LICENSE file"
-        # query = "Tell me how many directories there are in `.`"
-        # query = "Tell me about my GitHub profile"
-        # query = ("Make a new table in DB and put items apple and orange with counts 123 and 345 respectively, "
-        #         "then increment the coutns by 1, and show all the items in the table.")
-        # query = "Use sequential-thinking and plan a trip from Tokyo to San Francisco"
-        # query = "Open the BBC.com page, then close it"
-        # query = "Tell me about my Notion account"
-        # query = "What's the news from Tokyo today?"
+        queries = [
+            # "Read and briefly summarize the LICENSE file",
+            # "Fetch the raw HTML content from bbc.com and tell me the titile",
+            # "Tell me about my GitHub profile",
+            "Tell me about my Notion account",
+        ]
         
-        print("\x1b[33m")  # color to yellow
-        print(query)
-        print("\x1b[0m")   # reset the color
+        for query in queries:
+            print("\x1b[33m")  # color to yellow
+            print(query)
+            print("\x1b[0m")   # reset the color
 
-        messages = [HumanMessage(content=query)]
+            messages = [HumanMessage(content=query)]
 
-        result = await agent.ainvoke({"messages": messages})
+            result = await agent.ainvoke({"messages": messages})
 
-        result_messages = result["messages"]
-        # the last message should be an AIMessage
-        response = result_messages[-1].content
+            result_messages = result["messages"]
+            # the last message should be an AIMessage
+            response = result_messages[-1].content
 
-        print("\x1b[36m")  # color to cyan
-        print(response)
-        print("\x1b[0m")   # reset the color
+            print("\x1b[36m")  # color to cyan
+            print(response)
+            print("\x1b[0m")   # reset the color
 
     finally:
         # cleanup can be undefined when an exeption occurs during initialization

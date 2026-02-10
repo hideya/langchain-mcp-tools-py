@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- Update simple_usage.py to tesk newer LLM models
 - Minor updates to REAMDE and usage examples
 
 
