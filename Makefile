@@ -1,6 +1,6 @@
 # NOTES: 
 # - The command lines (recipe lines) must start with a TAB character.
-# - Each command line runs in a separate shell without .ONESHELL:
+# - Each command line runs in a separate shell if .ONESHELL: is not specified.
 .PHONY: clean install build check-pkg prep-publish test-publish publish \
 		test run-example sphinx gh-pages
 .ONESHELL:

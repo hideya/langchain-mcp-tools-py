@@ -78,7 +78,7 @@ async def run() -> None:
         }
         
         queries = [
-            "Read and briefly summarize the LICENSE file",
+            "Read and briefly summarize the LICENSE file in the current directory",
             "Fetch the raw HTML content from bbc.com and tell me the titile",
             "Tell me about my GitHub profile",
             "Tell me about my Notion account",
@@ -107,31 +107,30 @@ async def run() -> None:
         
         ### https://developers.openai.com/api/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        # model_name = "openai:gpt-5-mini"
-        # model_name = "openai:gpt-5.2")
+        model_name = "openai:gpt-5-mini"
+        # model_name = "openai:gpt-5.2"
 
         ### https://platform.claude.com/docs/en/about-claude/models/overview
         ### https://console.anthropic.com/settings/billing
-        # model_name = "anthropic:claude-3-5-haiku-latest")
-        # model_name = "anthropic:claude-haiku-4-5")
+        # model_name = "anthropic:claude-3-5-haiku-latest"
+        # model_name = "anthropic:claude-haiku-4-5"
         
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
-        # model_name = "google_genai:gemini-2.5-flash")
-        model_name = "google_genai:gemini-3-flash-preview"
+        # model_name = "google_genai:gemini-2.5-flash"
+        # model_name = "google_genai:gemini-3-flash-preview"
 
-        ### https://console.x.ai
-        # model_name = "xai:grok-3-mini")
-        # model_name = "xai:grok-4-1-fast-non-reasoning")
+        ### https://docs.x.ai/developers/models
+        # model_name = "xai:grok-3-mini"
+        # model_name = "xai:grok-4-1-fast-non-reasoning"
         
         ### https://console.groq.com/docs/rate-limits
         ### https://console.groq.com/dashboard/usage
-        # model_name = "groq:openai/gpt-oss-20b")
-        # model_name = "groq:openai/gpt-oss-120b")
+        # model_name = "groq:openai/gpt-oss-20b"
 
         ### https://cloud.cerebras.ai
         ### https://inference-docs.cerebras.ai/models/openai-oss
-        # FIXME: init_chat_model() doesn't support "cerebras"
+        ### FIXME: init_chat_model() doesn't support "cerebras"
         # from langchain_cerebras import ChatCerebras
         # model = ChatCerebras(model="gpt-oss-120b")
 

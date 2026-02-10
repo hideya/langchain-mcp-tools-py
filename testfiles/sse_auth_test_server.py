@@ -71,8 +71,7 @@ auth_token = ""
 
 # Create MCP application using FastMCP
 # Note: No port specified here - we'll run with uvicorn directly
-mcp = FastMCP("auth-test-mcp",
-              description="MCP Authentication Test Server")
+mcp = FastMCP("auth-test-mcp")
 
 
 def create_jwt_token(expiry_minutes=JWT_TOKEN_EXPIRY) -> str:
