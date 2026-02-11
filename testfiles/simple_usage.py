@@ -21,8 +21,6 @@ from langchain_mcp_tools import (
     convert_mcp_to_langchain_tools,
     McpServersConfig,
 )
-from remote_server_utils import start_remote_mcp_server_locally
-
 
 # A very simple logger
 def init_logger() -> logging.Logger:
@@ -39,6 +37,8 @@ async def run() -> None:
 
     try:
         mcp_servers: McpServersConfig = {
+            # Local MCP server that uses `npx`
+            # https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem
             "filesystem": {
                 # "transport": "stdio",  // optional
                 # "type": "stdio",  // optional: VSCode-style config works too
@@ -51,13 +51,17 @@ async def run() -> None:
                 # "cwd": "/tmp"  # the working dir to be use by the server
             },
 
+            # Local MCP server that uses `uvx`
+            # https://pypi.org/project/mcp-server-fetch/
             "fetch": {
                 "command": "uvx",
                 "args": [
                     "mcp-server-fetch"
                 ]
             },
-            
+
+            # # Embedding the value of an environment variable
+            # # https://www.npmjs.com/package/@modelcontextprotocol/server-brave-search
             # "brave-search": {
             #     "command": "npx",
             #     "args": [
@@ -68,8 +72,8 @@ async def run() -> None:
             #         "BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY")
             #     }
             # },
-            
-            # # Example of authentication via Authorization header
+
+            # # Example of remote MCP server authentication via Authorization header
             # # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
             # "github": {
             #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
@@ -81,13 +85,13 @@ async def run() -> None:
             #     }
             # },
 
-            # # For MCP servers that require OAuth, consider using "mcp-remote"
+            # # For remote MCP servers that require OAuth, consider using "mcp-remote"
             # "notion": {
             #     "command": "npx",
             #     "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
             # },
         }
-        
+
         queries = [
             "Read and briefly summarize the LICENSE file in the current directory",
             "Fetch the raw HTML content from bbc.com and tell me the titile",
@@ -97,7 +101,7 @@ async def run() -> None:
             # "Tell me about my GitHub profile",
             # "Tell me about my Notion account",
         ]
-        
+
         # If you are interested in MCP server's stderr redirection,
         # uncomment the following code snippets.
         #
@@ -118,7 +122,7 @@ async def run() -> None:
             # logging.DEBUG
             # init_logger()
         )
-        
+
         ### https://developers.openai.com/api/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
         model_name = "openai:gpt-5-mini"
@@ -128,7 +132,7 @@ async def run() -> None:
         ### https://console.anthropic.com/settings/billing
         # model_name = "anthropic:claude-3-5-haiku-latest"
         # model_name = "anthropic:claude-haiku-4-5"
-        
+
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
         # model_name = "google_genai:gemini-2.5-flash"
@@ -137,7 +141,7 @@ async def run() -> None:
         ### https://docs.x.ai/developers/models
         # model_name = "xai:grok-3-mini"
         # model_name = "xai:grok-4-1-fast-non-reasoning"
-        
+
         ### https://console.groq.com/docs/rate-limits
         ### https://console.groq.com/dashboard/usage
         # model_name = "groq:openai/gpt-oss-20b"
@@ -154,11 +158,11 @@ async def run() -> None:
             model,
             tools
         )
-        
+
         print("\x1b[32m", end="")  # color to green
         print("\nLLM model:", getattr(model, 'model', getattr(model, 'model_name', 'unknown')))
         print("\x1b[0m", end="")  # reset the color
-        
+
         for query in queries:
             print("\x1b[33m")  # color to yellow
             print(query)
@@ -171,7 +175,7 @@ async def run() -> None:
             result_messages = result["messages"]
             # the last message should be an AIMessage
             response_content = result_messages[-1].content
-            
+
             # Handle both string and list content (for multimodal models)
             # NOTE: Gemini 3 preview returns a list content, even for a single text
             if isinstance(response_content, str):
@@ -205,12 +209,6 @@ async def run() -> None:
         # the following only needed when testing the `errlog` key
         if "log_file_exit_stack" in locals():
             log_file_exit_stack.close()
-
-        # the followings only needed when testing the `url` key
-        if "sse_server_process" in locals():
-            sse_server_process.terminate()
-        if "ws_server_process" in locals():
-            ws_server_process.terminate()
 
 
 def main() -> None:

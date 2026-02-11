@@ -9,9 +9,9 @@ sys.path.insert(0, os.path.abspath('.'))
 
 # Try to get version from package
 try:
-    from langchain_mcp_tools import __version__
-    version = __version__
-    release = __version__
+    from importlib.metadata import version as get_version
+    version = get_version("langchain-mcp-tools")
+    release = version
 except ImportError:
     # Fallback to manual version if import fails during doc build
     version = 'unknown'

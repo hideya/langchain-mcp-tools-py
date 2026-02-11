@@ -1070,7 +1070,7 @@ wheels = [
 
 [[package]]
 name = "langchain-mcp-tools"
-version = "0.2.13"
+version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "jsonschema-pydantic" },
@@ -1091,7 +1091,6 @@ dev = [
     { name = "langchain-groq" },
     { name = "langchain-openai" },
     { name = "langchain-xai" },
-    { name = "pyjwt" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "websockets" },
@@ -1113,7 +1112,6 @@ requires-dist = [
     { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=1.1.8" },
     { name = "langchain-xai", marker = "extra == 'dev'", specifier = ">=1.2.2" },
     { name = "mcp", specifier = ">=1.9.4" },
-    { name = "pyjwt", marker = "extra == 'dev'", specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.4" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.25.2" },
     { name = "websockets", marker = "extra == 'dev'", specifier = ">=15.0.1" },

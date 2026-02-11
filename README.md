@@ -48,7 +48,7 @@ mcp_servers = {
             "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
         }
     },
-    "notion": {  # For MCP servers that require OAuth, consider using "mcp-remote"
+    "notion": {  # For remote MCP servers that require OAuth, consider using "mcp-remote"
         "command": "npx",
         "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
     },
@@ -249,7 +249,7 @@ Streamable HTTP is the modern MCP transport that replaces the older HTTP+SSE tra
 
 ### Accessing Remote MCP Servers with OAuth Quickly
 
-If you need to use MCP servers that require OAuth, consider using **"[mcp-remote](https://www.npmjs.com/package/mcp-remote)"**.
+If you need to use remote MCP servers that require OAuth, consider using **"[mcp-remote](https://www.npmjs.com/package/mcp-remote)"**.
 
 ```py
     "notionMCP": {
@@ -362,4 +362,5 @@ Set `"__pre_validate_authentication": False` in your server config if:
 
 ### For Developers
 
-See [TECHNICAL.md](./TECHNICAL.md) for technical details about implementation challenges and solutions.
+See [TECHNICAL.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/TECHNICAL.md)
+for technical details about implementation challenges and solutions.

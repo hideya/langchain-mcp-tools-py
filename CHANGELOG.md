@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [0.3.0] - 2026-02-11
+
 ### Fixed
 - [Issue #45](https://github.com/hideya/langchain-mcp-tools-py/issues/45):
   LangChain 1.2.x compatibility: Need to filter out None values for

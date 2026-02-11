@@ -1,7 +1,7 @@
 # NOTES: 
 # - The command lines (recipe lines) must start with a TAB character.
 # - Each command line runs in a separate shell if .ONESHELL: is not specified.
-.PHONY: clean install build check-pkg prep-publish test-publish publish \
+.PHONY: cleanall install build check-pkg prep-publish test-publish publish \
 		test run-example sphinx gh-pages
 .ONESHELL:
 
@@ -11,7 +11,7 @@
 install: .venv
 	uv pip install -e .
 
-build: clean install
+build: cleanall install
 	uv build
 	@echo
 	uvx twine check dist/*
@@ -60,8 +60,11 @@ run-%-test-client: install-dev
 	uv run testfiles/$(shell echo $* | tr '-' '_')_test_client.py
 
 sphinx: install
-	make -C docs clean html
+	make -C docs cleanall html
 
+# pip install sphinx==8.0.2
+# pip install sphinx_autodoc_typehints==3.6.1
+# pip install ghp-import==2.1.0
 deploy-docs: sphinx
 	ghp-import -n -p -f docs/_build/html
 
