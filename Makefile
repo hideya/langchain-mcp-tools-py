@@ -1,6 +1,6 @@
 # NOTES: 
 # - The command lines (recipe lines) must start with a TAB character.
-# - Each command line runs in a separate shell without .ONESHELL:
+# - Each command line runs in a separate shell if .ONESHELL: is not specified.
 .PHONY: clean install build check-pkg prep-publish test-publish publish \
 		test run-example sphinx gh-pages
 .ONESHELL:
@@ -65,7 +65,7 @@ sphinx: install
 deploy-docs: sphinx
 	ghp-import -n -p -f docs/_build/html
 
-clean:
+cleanall:
 	git clean -fdxn -e .env
-	@read -p '\nOK? '
+	@read -p 'OK? '
 	git clean -fdx -e .env

@@ -8,8 +8,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [Issue #45](https://github.com/hideya/langchain-mcp-tools-py/issues/45):
+  LangChain 1.2.x compatibility: Need to filter out None values for
+  optional parameters when calling MCP tools
+- [Issue #46](https://github.com/hideya/langchain-mcp-tools-py/issues/46):
+  MCP tool errors shouldn't raise ToolException to allow LLM's graceful recover
+- [Issue #47](https://github.com/hideya/langchain-mcp-tools-py/issues/47):
+  Make sure to work with latest models including GPT 5, Claude 4.5,
+  Gemini 3 preview and Grok 4.1
+
 ### Changed
-- Minor updates to REAMDE and usage examples
+- Confirmed compatibility with LangChain 1.2.9+
+- Update simple_usage.py to test recent LLM models
+- Minor updates to README and usage examples
 
 
 ## [0.2.13] - 2025-08-18
