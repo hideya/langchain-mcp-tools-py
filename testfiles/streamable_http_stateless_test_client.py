@@ -27,7 +27,7 @@ async def test_simple_server():
     
     server_config = {
         "test-server": {
-            "url": "http://127.0.0.1:8000/mcp",
+            "url": "http://127.0.0.1:8002/mcp",
             # No transport specified - should auto-detect Streamable HTTP
             "timeout": 10.0
         }
