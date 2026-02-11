@@ -11,7 +11,7 @@ However, it only supports text results of tool calls and does not support MCP fe
 
 [LangChain's **official LangChain MCP Adapters** library](https://pypi.org/project/langchain-mcp-adapters/),
 which supports comprehensive integration with LangChain, has been released.
-You may want to consider using it if you don't have specific needs for this library.
+You might want to consider using it if the extra features that this library supports are not necessary.
 
 ## Prerequisites
 
@@ -71,11 +71,11 @@ The returned tools can be used with LangChain, e.g.:
 
 ```python
 # from langchain.chat_models import init_chat_model
-llm = init_chat_model("google_genai:gemini-2.5-flash")
+model = init_chat_model("google_genai:gemini-2.5-flash")
 
-# from langgraph.prebuilt import create_react_agent
-agent = create_react_agent(
-    llm,
+# from langchain.agents import create_agent
+agent = create_agent(
+    model,
     tools
 )
 ```
