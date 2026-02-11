@@ -58,30 +58,44 @@ async def run() -> None:
                 ]
             },
             
-            # Example of authentication via Authorization header
-            # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
-            "github": {
-                # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
-                "type": "http",
-                # "__pre_validate_authentication": False,
-                "url": "https://api.githubcopilot.com/mcp/",
-                "headers": {
-                    "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
-                }
-            },
+            # "brave-search": {
+            #     "command": "npx",
+            #     "args": [
+            #         "-y",
+            #         "@modelcontextprotocol/server-brave-search"
+            #     ],
+            #     "env": {
+            #         "BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY")
+            #     }
+            # },
             
-            # For MCP servers that require OAuth, consider using "mcp-remote"
-            "notion": {
-                "command": "npx",
-                "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
-            },
+            # # Example of authentication via Authorization header
+            # # https://github.com/github/github-mcp-server?tab=readme-ov-file#remote-github-mcp-server
+            # "github": {
+            #     # To avoid auto protocol fallback, specify the protocol explicitly when using authentication
+            #     "type": "http",
+            #     # "__pre_validate_authentication": False,
+            #     "url": "https://api.githubcopilot.com/mcp/",
+            #     "headers": {
+            #         "Authorization": f"Bearer {os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN')}"
+            #     }
+            # },
+
+            # # For MCP servers that require OAuth, consider using "mcp-remote"
+            # "notion": {
+            #     "command": "npx",
+            #     "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
+            # },
         }
         
         queries = [
             "Read and briefly summarize the LICENSE file in the current directory",
             "Fetch the raw HTML content from bbc.com and tell me the titile",
-            "Tell me about my GitHub profile",
-            "Tell me about my Notion account",
+            # # NOTE: The following is to test tool call error handling
+            # "Try to fetch the raw HTML content from abc.bbc.com, bbc.com and xyz.bbc.com, and tell me which is succesful",
+            # "Search for 'news in California' and show the first hit",
+            # "Tell me about my GitHub profile",
+            # "Tell me about my Notion account",
         ]
         
         # If you are interested in MCP server's stderr redirection,
@@ -130,7 +144,7 @@ async def run() -> None:
 
         ### https://cloud.cerebras.ai
         ### https://inference-docs.cerebras.ai/models/openai-oss
-        ### FIXME: init_chat_model() doesn't support "cerebras"
+        ### NOTE: init_chat_model() doesn't support "cerebras"
         # from langchain_cerebras import ChatCerebras
         # model = ChatCerebras(model="gpt-oss-120b")
 

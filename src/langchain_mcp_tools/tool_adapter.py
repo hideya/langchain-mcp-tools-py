@@ -128,9 +128,12 @@ def create_mcp_langchain_adapter(
 
                 # Check for MCP tool execution errors
                 if hasattr(result, "isError") and result.isError:
-                    raise ToolException(
-                        f"Tool execution failed: {result.content}"
+                    error_message = f"Tool execution failed: {result.content}"
+                    logger.warning(
+                        f'MCP tool "{server_name}"/"{self.name}" '
+                        f"returned error: {error_message}"
                     )
+                    return error_message
 
                 if not hasattr(result, "content"):
                     return str(result)

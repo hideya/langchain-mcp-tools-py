@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Fixed
-- Filter out None values for optional parameters when calling MCP tools
-  LangChain 1.2.x passes all parameters including optional ones with None values,
-  but MCP servers expect optional parameters to be omitted entirely
+- [Issue #45](https://github.com/hideya/langchain-mcp-tools-py/issues/45):
+  LangChain 1.2.x compatibility: Need to filter out None values for
+  optional parameters when calling MCP tools
+- [Issue #46](https://github.com/hideya/langchain-mcp-tools-py/issues/46):
+  MCP tool errors shouldn't raise ToolException to allow LLM's graceful recover
 
 ### Changed
 - Confirmed compatibility with LangChain 1.2.9+
