@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Confirmed compatibility with LangChain 1.2.9+
-- Update simple_usage.py to test newer LLM models
+- Update simple_usage.py to test recent LLM models
 - Minor updates to README and usage examples
 
 
