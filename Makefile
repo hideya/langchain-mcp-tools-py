@@ -51,6 +51,9 @@ test: install-dev
 run-simple-usage: install-dev
 	uv run testfiles/simple_usage.py
 
+run-sse-and-ws-test: install-dev
+	uv run testfiles/sse_and_ws_test.py
+
 # E.g.: make run-streamable-http-oauth-test-server
 run-%-test-server: install-dev
 	uv run testfiles/$(shell echo $* | tr '-' '_')_test_server.py
