@@ -64,10 +64,7 @@ async def run() -> None:
             # # https://www.npmjs.com/package/@modelcontextprotocol/server-brave-search
             # "brave-search": {
             #     "command": "npx",
-            #     "args": [
-            #         "-y",
-            #         "@modelcontextprotocol/server-brave-search"
-            #     ],
+            #     "args": ["-y", "@modelcontextprotocol/server-brave-search"],
             #     "env": {
             #         "BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY")
             #     }
@@ -97,8 +94,8 @@ async def run() -> None:
             # # NOTE: The following is to test tool call error handling
             # "Try to fetch the raw HTML content from abc.bbc.com, bbc.com and xyz.bbc.com, and tell me which is succesful",
             # "Search for 'news in California' and show the first hit",
-            # "Tell me about my GitHub profile",
-            # "Tell me about my Notion account",
+            # "Tell me about my default GitHub profile",
+            # "Tell me about my default Notion account",
         ]
 
         # # If you are interested in local MCP server's stderr redirection,

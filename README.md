@@ -41,6 +41,13 @@ mcp_servers = {
         "command": "uvx",
         "args": ["mcp-server-fetch"]
     },
+    "brave-search": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+        "env": {
+            "BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY")
+        }
+    },
     "github": {
         "type": "http",
         "url": "https://api.githubcopilot.com/mcp/",
@@ -252,7 +259,7 @@ Streamable HTTP is the modern MCP transport that replaces the older HTTP+SSE tra
 If you need to use remote MCP servers that require OAuth, consider using **"[mcp-remote](https://www.npmjs.com/package/mcp-remote)"**.
 
 ```py
-    "notionMCP": {
+    "notion": {
         "command": "npx",
         "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"],
     },

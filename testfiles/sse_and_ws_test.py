@@ -25,17 +25,16 @@ from langchain_mcp_tools import (
 from remote_server_utils import start_remote_mcp_server_locally
 
 
-# Run a SSE MCP server using Supergateway in a separate process
-sse_server_process, sse_server_port = start_remote_mcp_server_locally(
-    "SSE", "npx -y @h1deya/mcp-server-weather")
-
-# Run a WS MCP server using Supergateway in a separate process
-ws_server_process, ws_server_port = start_remote_mcp_server_locally(
-    "WS", "npx -y @h1deya/mcp-server-weather")
-
-
 async def run() -> None:
     load_dotenv()
+
+    # Run a SSE MCP server using Supergateway in a separate process
+    sse_server_process, sse_server_port = start_remote_mcp_server_locally(
+        "SSE", "npx -y @h1deya/mcp-server-weather")
+
+    # Run a WS MCP server using Supergateway in a separate process
+    ws_server_process, ws_server_port = start_remote_mcp_server_locally(
+        "WS", "npx -y @h1deya/mcp-server-weather")
 
     try:
         mcp_servers: McpServersConfig = {
@@ -158,9 +157,16 @@ async def run() -> None:
         if "cleanup" in locals():
             await cleanup()
 
-        # the following only needed when testing the `errlog` key
         if "log_file_exit_stack" in locals():
             log_file_exit_stack.close()
+
+        if "sse_server_process" in locals():
+            print("Terminating SSE MCP server...")
+            sse_server_process.terminate()
+
+        if "ws_server_process" in locals():
+            print("Terminating WebSocket MCP server...")
+            ws_server_process.terminate()
 
 
 def main() -> None:
