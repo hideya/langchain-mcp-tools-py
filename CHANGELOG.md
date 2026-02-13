@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 
+## [0.3.1] - 2026-02-13
+
+### Added
+- An example of how to use the "env" configuration to README.md
+
+
 ## [0.3.0] - 2026-02-11
 
 ### Fixed

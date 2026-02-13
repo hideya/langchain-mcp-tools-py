@@ -63,7 +63,7 @@ run-%-test-client: install-dev
 	uv run testfiles/$(shell echo $* | tr '-' '_')_test_client.py
 
 sphinx: install
-	make -C docs cleanall html
+	make -C docs clean html
 
 # pip install sphinx==8.0.2
 # pip install sphinx_autodoc_typehints==3.6.1
