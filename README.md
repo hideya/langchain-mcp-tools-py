@@ -150,9 +150,26 @@ While MCP tools can return multiple content types (text, images, etc.), this lib
 
 ### Note
 
-- **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to stdio server configrations if not explicitly provided to ensure servers can find required executables.
+- **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to local (stdio) server configrations, if not explicitly provided, to ensure servers can find required executables.
 
 ## Features
+
+### Environment Variable Configuration for Local MCP Server
+
+If you need to pass an API key or other configurations to a local MCP server
+via environment variables, use this example as a guide:
+
+```ts
+    "brave-search": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+        "env": {
+            "BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY")
+        }
+    },
+```
+
+**Note**: The library automatically adds the `PATH` environment variable to local (stdio) server configrations, if not explicitly provided, to ensure servers can find required executables.
 
 ### stderr Redirection for Local MCP Server
 
