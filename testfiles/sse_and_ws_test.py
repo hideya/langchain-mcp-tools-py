@@ -153,7 +153,7 @@ async def run() -> None:
         print("\x1b[0m")   # reset the color
 
     finally:
-        # cleanup can be undefined when an exeption occurs during initialization
+        # `cleanup` can be undefined when an exeption occurs during initialization
         if "cleanup" in locals():
             await cleanup()
 

@@ -1,6 +1,6 @@
 [project]
 name = "langchain-mcp-tools"
-version = "0.3.2"
+version = "0.3.3"
 description = "Model Context Protocol (MCP) To LangChain Tools Conversion Utility"
 keywords = [
     "modelcontextprotocol",
@@ -48,5 +48,7 @@ where = ["src"]
 langchain_mcp_tools = ["py.typed"]
 
 [project.urls]
-"Bug Tracker" = "https://github.com/hideya/langchain-mcp-tools-py/issues"
-"Source Code" = "https://github.com/hideya/langchain-mcp-tools-py"
+"API Reference" = "https://hideya.github.io/langchain-mcp-tools-py/"
+"Changelog" = "https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md"
+"Issues" = "https://github.com/hideya/langchain-mcp-tools-py/issues"
+"Repository" = "https://github.com/hideya/langchain-mcp-tools-py"

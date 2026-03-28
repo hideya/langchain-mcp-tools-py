@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## [Unreleased]
+## [0.3.3] - 2026-03-28
 
 ### Fixed
 - [PR #50](https://github.com/hideya/langchain-mcp-tools-py/pull/50):
