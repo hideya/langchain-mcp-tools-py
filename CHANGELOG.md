@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [PR #50](https://github.com/hideya/langchain-mcp-tools-py/pull/50):
+  handle array schemas without items key in _fix_schema
+
 
 ## [0.3.2] - 2026-02-13
 
