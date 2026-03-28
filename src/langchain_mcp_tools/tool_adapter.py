@@ -14,10 +14,8 @@ try:
     import mcp.types as mcp_types
     from pydantic import BaseModel
 except ImportError as e:
-    print(f"
-Error: Required package not found: {e}")
-    print("Please ensure all required packages are installed
-")
+    print(f"\nError: Required package not found: {e}")
+    print("Please ensure all required packages are installed\n")
     import sys
     sys.exit(1)
 
@@ -154,9 +152,7 @@ def create_mcp_langchain_adapter(
                 # The library uses LangChain's `response_format: 'content'` (the default),
                 # which only supports text strings and BaseTool._arun() expects string return type
                 try:
-                    result_content_text = "
-
-".join(
+                    result_content_text = "\n\n".join(
                         item.text
                         for item in result.content
                         if isinstance(item, mcp_types.TextContent)
