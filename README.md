@@ -16,6 +16,10 @@ You might want to consider using it if the extra features that this library supp
 ## Prerequisites
 
 - Python 3.11+
+- [optional] [`uv` (`uvx`)](https://docs.astral.sh/uv/getting-started/installation/)
+  installed to run Python package-based local MCP servers
+- [optional] [npm 7+ (`npx`)](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+  to run Node.js package-based local MCP servers
 
 ## Installation
 
@@ -102,12 +106,12 @@ try:
     # Use tools with your LLM
 
 finally:
-    # cleanup can be undefined when an exeption occurs during initialization
+    # `cleanup` can be undefined when an exeption occurs during initialization
     if "cleanup" in locals():
         await cleanup()
 ```
 
-A minimal but complete working usage example can be found
+**A simple working usage example** can be found
 [in this example in the langchain-mcp-tools-py-usage repo](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/main/src/example.py)
 
 For hands-on experimentation with MCP server integration,
@@ -115,6 +119,25 @@ try [this MCP Client CLI tool built with this library](https://pypi.org/project/
 
 A TypeScript equivalent of this utility is available
 [here](https://www.npmjs.com/package/@h1deya/langchain-mcp-tools)
+
+
+## API Reference
+
+Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
+
+## Change Log
+
+Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)
+
+## Working Usage Example
+Can be found
+[in this example in the langchain-mcp-tools-py-usage repo](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/main/src/example.py)
+
+## Building from Source
+
+See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
+
+<br/>
 
 ## Introduction
 
@@ -150,7 +173,7 @@ While MCP tools can return multiple content types (text, images, etc.), this lib
 
 ### Note
 
-- **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to local (stdio) server configrations, if not explicitly provided, to ensure servers can find required executables.
+- **Passing PATH Env Variable**: The library automatically adds the `PATH` environment variable to local server configrations, if not explicitly provided, to ensure servers can find required executables.
 
 ## Features
 
@@ -169,12 +192,11 @@ via environment variables, use this example as a guide:
     },
 ```
 
-**Note**: The library automatically adds the `PATH` environment variable to local (stdio) server configrations, if not explicitly provided, to ensure servers can find required executables.
+**Note**: The library automatically adds the `PATH` environment variable to local server configrations, if not explicitly provided, to ensure servers can find required executables.
 
 ### stderr Redirection for Local MCP Server
 
-A new key `"errlog"` has been introduced to specify a file-like object
-to which local (stdio) MCP server's stderr is redirected.
+A new key `"errlog"` has been introduced to specify a file-like object to which local MCP server's stderr is redirected.
 
 ```python
     log_path = f"mcp-server-{server_name}.log"
@@ -182,13 +204,15 @@ to which local (stdio) MCP server's stderr is redirected.
     mcp_servers[server_name]["errlog"] = log_file
 ```
 
-A usage example can be found [here](https://github.com/hideya/langchain-mcp-tools-py-usage/blob/3bd35d9fb49f4b631fe3d0cc8491d43cbf69693b/src/example.py#L88-L108).  
+A usage example can be found [here](
+https://github.com/hideya/langchain-mcp-tools-py-usage/blob/45630b2907f2da6e9c68f5ab1c11d783a5d56ef3/src/example.py#L101-L114
+).  
 The key name `errlog` is derived from
 [`stdio_client()`'s argument `errlog`](https://github.com/modelcontextprotocol/python-sdk/blob/babb477dffa33f46cdc886bc885eb1d521151430/src/mcp/client/stdio/__init__.py#L96).  
 
 ### Working Directory Configuration for Local MCP Servers
 
-The working directory that is used when spawning a local (stdio) MCP server
+The working directory that is used when spawning a local MCP server
 can be specified with the `"cwd"` key as follows:
 
 ```python
@@ -208,10 +232,11 @@ The library selects transports using the following priority order:
 
 1. **Explicit transport/type field** (must match URL protocol if URL provided)
 2. **URL protocol auto-detection** (http/https → StreamableHTTP → SSE, ws/wss → WebSocket)
-3. **Command presence** → Stdio transport
+3. **Command presence** → Stdio transport (local MCP server)
 4. **Error** if none of the above match
 
-This ensures predictable behavior while allowing flexibility for different deployment scenarios.
+This ensures predictable behavior while allowing flexibility for different deployment scenarios.  
+**Note:** SSE transport is deprecated as of protocol version 2025-03-26; Streamable HTTP is the recommended approach.
 
 ### Remote MCP Server Support
 
@@ -230,7 +255,7 @@ This ensures predictable behavior while allowing flexibility for different deplo
         # "type": "http"  # VSCode-style config also works instead of the above
     },
 
-    # Explicit SSE
+    # Explicit SSE (Note: SSE transport is deprecated)
     "sse-server-name": {
         "url": f"http://{sse_server_host}:{sse_server_port}/...",
         "transport": "sse"  # or `"type": "sse"`
@@ -255,9 +280,6 @@ The `"headers"` key can be used to pass HTTP headers to Streamable HTTP and SSE 
     },
 ```
 
-NOTE: When accessing the GitHub MCP server, [GitHub PAT (Personal Access Token)](https://github.com/settings/personal-access-tokens)
-alone is not enough; your GitHub account must have an active Copilot subscription or be assigned a Copilot license through your organization.
-
 **Auto-detection behavior (default):**
 - For HTTP/HTTPS URLs without explicit `transport`, the library follows [MCP specification recommendations](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#backwards-compatibility)
 - First attempts Streamable HTTP transport
@@ -266,7 +288,7 @@ alone is not enough; your GitHub account must have an active Copilot subscriptio
 
 **Explicit transport selection:**
 - Set `"transport": "streamable_http"` (or VSCode-style config `"type": "http"`) to force Streamable HTTP (no fallback)
-- Set `"transport": "sse"` to force SSE transport
+- Set `"transport": "sse"` to force SSE transport (SSE transport is deprecated)
 - WebSocket URLs (`ws://` or `wss://`) always use WebSocket transport
 
 Streamable HTTP is the modern MCP transport that replaces the older HTTP+SSE transport. According to the [official MCP documentation](https://modelcontextprotocol.io/docs/concepts/transports): "SSE as a standalone transport is deprecated as of protocol version 2025-03-26. It has been replaced by Streamable HTTP, which incorporates SSE as an optional streaming mechanism."
@@ -322,17 +344,6 @@ Test implementations are provided:
 The library also supports authentication for SSE connections to MCP servers.
 Note that SSE transport is deprecated; Streamable HTTP is the recommended approach.
 
-## API docs
-
-Can be found [here](https://hideya.github.io/langchain-mcp-tools-py/)
-
-## Change Log
-
-Can be found [here](https://github.com/hideya/langchain-mcp-tools-py/blob/main/CHANGELOG.md)
-
-## Building from Source
-
-See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/README_DEV.md) for details.
 
 ## Appendix
 
@@ -346,7 +357,7 @@ See [README_DEV.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/R
         logging.DEBUG
     )
     ```
-2. **Check server errlog**: For stdio MCP servers, use `errlog` redirection to capture server error output
+2. **Check server errlog**: For local MCP servers, use `errlog` redirection to capture server error output
 3. **Test explicit transports**: Try forcing specific transport types to isolate auto-detection issues
 4. **Verify server independently**: Refer to [Debugging Section in MCP documentation](https://modelcontextprotocol.io/docs/tools/debugging)
 
@@ -388,3 +399,14 @@ Set `"__pre_validate_authentication": False` in your server config if:
 
 See [TECHNICAL.md](https://github.com/hideya/langchain-mcp-tools-py/blob/main/TECHNICAL.md)
 for technical details about implementation challenges and solutions.
+
+
+## License
+
+MIT License - see [LICENSE](https://github.com/hideya/langchain-mcp-tools-py/blob/main/LICENSE) file for details.
+
+## Contributing
+
+[Issues](https://github.com/hideya/langchain-mcp-tools-py/issues) and 
+[pull requests](https://github.com/hideya/langchain-mcp-tools-py/pulls) welcome!  
+In particular, please share any issues relating to the latest versions of LangChain and LLM models, as well as specific MCP servers.

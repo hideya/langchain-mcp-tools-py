@@ -80,22 +80,22 @@ async def run() -> None:
 
         ### https://developers.openai.com/api/docs/pricing
         ### https://platform.openai.com/settings/organization/billing/overview
-        model_name = "openai:gpt-5-mini"
+        model_name = "openai:gpt-5.4-mini"
         # model_name = "openai:gpt-5.2"
 
         ### https://platform.claude.com/docs/en/about-claude/models/overview
         ### https://console.anthropic.com/settings/billing
-        # model_name = "anthropic:claude-3-5-haiku-latest"
+        # model_name = "anthropic:claude-sonnet-4-6"
         # model_name = "anthropic:claude-haiku-4-5"
 
         ### https://ai.google.dev/gemini-api/docs/pricing
         ### https://console.cloud.google.com/billing
+        # model_name = "google_genai:gemini-3.1-flash-lite-preview"
         # model_name = "google_genai:gemini-2.5-flash"
-        # model_name = "google_genai:gemini-3-flash-preview"
 
         ### https://docs.x.ai/developers/models
-        # model_name = "xai:grok-3-mini"
         # model_name = "xai:grok-4-1-fast-non-reasoning"
+        # model_name = "xai:grok-3-mini"
 
         tools, cleanup = await convert_mcp_to_langchain_tools(
             mcp_servers,
@@ -153,7 +153,7 @@ async def run() -> None:
         print("\x1b[0m")   # reset the color
 
     finally:
-        # cleanup can be undefined when an exeption occurs during initialization
+        # `cleanup` can be undefined when an exeption occurs during initialization
         if "cleanup" in locals():
             await cleanup()
 
