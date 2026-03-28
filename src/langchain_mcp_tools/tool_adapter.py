@@ -14,14 +14,22 @@ try:
     import mcp.types as mcp_types
     from pydantic import BaseModel
 except ImportError as e:
-    print(f"\nError: Required package not found: {e}")
-    print("Please ensure all required packages are installed\n")
+    print(f"
+Error: Required package not found: {e}")
+    print("Please ensure all required packages are installed
+")
     import sys
     sys.exit(1)
 
 
 def _fix_schema(schema: dict) -> dict:
-    """Converts JSON Schema "type": ["string", "null"] to "anyOf" format.
+    """Converts non-standard JSON Schema formats to compatible equivalents.
+
+    Normalizations applied:
+    - "type": ["string", "null"] is converted to "anyOf" format
+    - "type": "array" without "items" gets a default "items": {} (resolves
+      KeyError in jsonschema_pydantic when MCP servers omit the items schema,
+      as seen with e.g. @antv/mcp-server-chart; defaults to List[Any])
 
     Args:
         schema: A JSON schema dictionary
@@ -33,6 +41,10 @@ def _fix_schema(schema: dict) -> dict:
         if "type" in schema and isinstance(schema["type"], list):
             schema["anyOf"] = [{"type": t} for t in schema["type"]]
             del schema["type"]  # Remove "type" and standardize to "anyOf"
+        # Defensive fix: array schemas without "items" cause KeyError in
+        # jsonschema_pydantic.convert_type(). Default to {} (-> List[Any]).
+        if schema.get("type") == "array" and "items" not in schema:
+            schema["items"] = {}
         for key, value in schema.items():
             schema[key] = _fix_schema(value)  # Apply recursively
     return schema
@@ -142,7 +154,9 @@ def create_mcp_langchain_adapter(
                 # The library uses LangChain's `response_format: 'content'` (the default),
                 # which only supports text strings and BaseTool._arun() expects string return type
                 try:
-                    result_content_text = "\n\n".join(
+                    result_content_text = "
+
+".join(
                         item.text
                         for item in result.content
                         if isinstance(item, mcp_types.TextContent)
