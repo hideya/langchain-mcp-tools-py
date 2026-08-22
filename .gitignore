@@ -9,6 +9,8 @@ __pycache__/
 *.log
 .DS_Store
 
+/tmp
+
 # Sphinx documentation
 docs/_build/
 docs/modules/__pycache__/
