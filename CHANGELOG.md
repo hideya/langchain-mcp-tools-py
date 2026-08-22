@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [0.3.4] - 2026-08-23
+
+### Changed
+- Documentation-only release
+- Clarify that this library supports MCP Protocol version 2025-03-26
+  and does not support the MCP 2026-07-28 specification
+- Mark the project as maintenance / dormant mode
+- Recommend LangChain's official LangChain MCP Adapters
+  (`langchain-mcp-adapters`) for new projects
+
+
 ## [0.3.3] - 2026-03-28
 
 ### Fixed
