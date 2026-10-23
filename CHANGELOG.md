@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [0.3.5] - 2026-10-23
+
 ### Changed
 - Cap the MCP Python SDK dependency below version 2 because this library uses
   client APIs removed in SDK 2
