@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [Unreleased]
+
+### Changed
+- Cap the MCP Python SDK dependency below version 2 because this library uses
+  client APIs removed in SDK 2
+- Document that MCP Python SDK 2.x is not supported; SDK 2 support will not be
+  implemented in this maintenance-mode project
+
+
 ## [0.3.4] - 2026-08-23
 
 ### Changed

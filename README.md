@@ -17,6 +17,10 @@ This project is now in maintenance / dormant mode. Existing users may continue
 using it with MCP servers compatible with the 2025-03-26 specification, but new
 MCP protocol features will not be actively implemented here.
 
+This library depends on the MCP Python SDK 1.x and does not support SDK 2.x.
+The dependency is capped below version 2 because SDK 2 removed client APIs this
+library uses. For SDK 2 support, use LangChain's official MCP Adapters library.
+
 ## Introduction
 
 A simple, lightweight library to use 
@@ -187,6 +191,11 @@ This library does **not** support the MCP **2026-07-28** specification.
 The 2026-07-28 update requires substantial changes to MCP client behavior and
 the Python SDK integration, and this project is not actively tracking those
 new protocol features.
+
+This project supports the MCP Python SDK 1.x only. It does not support SDK 2.x,
+whose client API has breaking changes incompatible with this library. The
+package dependency is capped at `mcp<2` to prevent installing an unsupported
+SDK version.
 
 For new MCP integrations with LangChain, use
 [LangChain's official LangChain MCP Adapters library](https://pypi.org/project/langchain-mcp-adapters/).

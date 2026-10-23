@@ -18,7 +18,7 @@ dependencies = [
     "jsonschema-pydantic>=0.6",
     "langchain>=0.3.26",
     "langchain-core>=0.3.66",
-    "mcp>=1.9.4",
+    "mcp>=1.9.4,<2",
 ]
 
 [project.optional-dependencies]
